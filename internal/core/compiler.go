@@ -44,7 +44,7 @@ func (c *Compiler) analyze(ps PromptSource) []string {
 	if ps.Context == "" {
 		warnings = append(warnings, "Falta contexto adicional para mejores resultados")
 	}
-	if len(ps.Constraints) < 5 {
+	if len(ps.Constraints) < 2 {
 		warnings = append(warnings, "Las restricciones son muy limitadas")
 	}
 
@@ -53,5 +53,9 @@ func (c *Compiler) analyze(ps PromptSource) []string {
 
 func (c *Compiler) render(ps PromptSource) string {
 	// Implementación básica de renderizado
-	return ps.Role + "\n\n" + ps.Task + "\n\nContexto: " + ps.Context + "\n\nRestricciones: " + ps.Constraints
+	constraintsStr := ""
+	for _, constraint := range ps.Constraints {
+		constraintsStr += "- " + constraint + "\n"
+	}
+	return ps.Role + "\n\n" + ps.Task + "\n\nContexto: " + ps.Context + "\n\nRestricciones:\n" + constraintsStr
 }

@@ -1,0 +1,10 @@
+id: "refactor-go-01"
+role: "Senior Go Developer"
+context: "Sistema de microservicios con alta carga de transacciones."
+task: "Explicar por qué usar pointer receivers en lugar de value receivers en structs grandes."
+constraints:
+  - "No uses ejemplos genéricos de perros o autos."
+  - "Enfócate en la gestión de memoria y el GC."
+  - "Incluye un snippet de código comparativo."
+
+
