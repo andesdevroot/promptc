@@ -1,0 +1,19 @@
+# Binarios
+bin/
+promptc
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Dependencias
+vendor/
+
+# IDEs y SO
+.idea/
+.vscode/
+.DS_Store
+
+# Test coverage
+*.out
