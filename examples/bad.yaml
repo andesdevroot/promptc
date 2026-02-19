@@ -1,0 +1,7 @@
+role: "Asistente"
+context: "Datos de venta."
+task: "Analiza esto rápido y hazlo lo mejor posible."
+constraints:
+  - "Sé amable."
+
+  
