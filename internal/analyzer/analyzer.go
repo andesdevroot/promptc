@@ -6,46 +6,40 @@ import (
 	"github.com/andesdevroot/promptc/internal/models"
 )
 
-// Listado de palabras que causan alucinación (Vaguedad)
-var vagueWords = []string{
-	"hazlo lo mejor posible",
-	"hazlo lo mejor que puedas",
-	"hazlo lo mejor posible",
-	"hazlo lo mejor que puedas",
-	"rápido",
-	"brevemente",
-	"algo así",
-	"importante", // Subjetivo: ¿que es importante para el usuario?
-	"creo que",
-	"espero que",
-	"ojalá",
-	"ojalá que",
+// Issue representa un problema encontrado en el prompt
+type Issue struct {
+	Type    string // "CRITICAL", "WARNING", "TIP"
+	Message string
 }
 
-// Analyze revisa el prompt y devuelve warnings y un score calculado.
-func Analyze(p models.PromptSource) ([]string, int) {
-	var warnings []string
+// Analyze realiza el análisis estático del prompt
+func Analyze(p models.PromptSource) (int, []Issue) {
 	score := 100
+	var issues []Issue
 
-	// REGLA 1: Longitud de Contexto
-	// Un contexto vacío o muy corto es garantía de invención.
+	// 1. REGLA: Contexto Insuficiente (Riesgo Alto)
 	if len(p.Context) < 20 {
-		warnings = append(warnings, "CRITICAL: El contexto es demasiado corto. El modelo inventará datos.")
 		score -= 40
+		issues = append(issues, Issue{
+			Type:    "CRITICAL",
+			Message: "El contexto es peligrosamente corto. El modelo tenderá a alucinar.",
+		})
 	}
 
-	// REGLA 2: Detección de Ambigüedad
-	// Buscamos palabras prohibidas en la Tarea.
+	// 2. REGLA: Ambigüedad en la Tarea
+	vagueWords := []string{"rápido", "breve", "mejor posible", "algo así", "creo"}
 	taskLower := strings.ToLower(p.Task)
 	for _, word := range vagueWords {
 		if strings.Contains(taskLower, word) {
-			warnings = append(warnings, "AMBIGUITY: Evita la palabra '"+word+"'. Sé específico con métricas o formatos.")
 			score -= 10
+			issues = append(issues, Issue{
+				Type:    "WARNING",
+				Message: "Palabra ambigua detectada: '" + word + "'. Sé más específico.",
+			})
 		}
 	}
 
-	// REGLA 3: Restricciones Negativas
-	// Es vital decir qué NO hacer.
+	// 3. REGLA: Falta de Constraints Negativos (Security)
 	hasNegative := false
 	for _, c := range p.Constraints {
 		cLower := strings.ToLower(c)
@@ -55,14 +49,17 @@ func Analyze(p models.PromptSource) ([]string, int) {
 		}
 	}
 	if !hasNegative {
-		warnings = append(warnings, "SECURITY: Faltan restricciones negativas (Negative Constraints).")
 		score -= 15
+		issues = append(issues, Issue{
+			Type:    "SECURITY",
+			Message: "Faltan 'Negative Constraints'. Debes decir explícitamente qué NO hacer.",
+		})
 	}
 
-	// Normalizar score (que no baje de 0)
+	// Normalización del score
 	if score < 0 {
 		score = 0
 	}
 
-	return warnings, score
+	return score, issues
 }

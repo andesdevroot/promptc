@@ -7,8 +7,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ParserFile lee un archivo YAML y lo convierte en un PromptSource
-func ParserFile(filePath string) (models.PromptSource, error) {
+// ParseFile lee un archivo YAML y lo convierte en un PromptSource
+func ParseFile(filePath string) (models.PromptSource, error) {
 	var source models.PromptSource
 
 	data, err := os.ReadFile(filePath)

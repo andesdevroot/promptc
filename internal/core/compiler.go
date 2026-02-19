@@ -29,7 +29,13 @@ func (c *Compiler) Compile(ps models.PromptSource) (*models.Result, error) {
 	}
 
 	// 2. Analisis y Scoring
-	warnings, score := analyzer.Analyze(ps)
+	score, issues := analyzer.Analyze(ps)
+
+	// Convertir issues a warnings (slice de strings)
+	var warnings []string
+	for _, issue := range issues {
+		warnings = append(warnings, issue.Message)
+	}
 
 	// 3. Generacion (BINARIO)
 	output := c.render(ps)
