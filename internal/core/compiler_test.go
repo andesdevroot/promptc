@@ -2,13 +2,15 @@ package core
 
 import (
 	"testing"
+
+	"github.com/andesdevroot/promptc/internal/models"
 )
 
 func TestCompiler_Success(t *testing.T) {
 	c := NewCompiler()
-	src := PromptSource{
+	src := models.PromptSource{
 		Role: "Senior Developer",
-		Task: "Explicar punteros en Go de forma clara",
+		Task: "Explicar punteros en Go de forma clara, con ejemplos técnicos",
 	}
 
 	res, err := c.Compile(src)
@@ -23,9 +25,9 @@ func TestCompiler_Success(t *testing.T) {
 
 func TestCompile_MissingRole(t *testing.T) {
 	c := NewCompiler()
-	src := PromptSource{
+	src := models.PromptSource{
 		Role: "Senior Developer",
-		Task: "Explicar punteros en Go de forma clara",
+		Task: "Explicar punteros en Go de forma clara, con ejemplos técnicos",
 	}
 
 	res, err := c.Compile(src)

@@ -1,6 +1,11 @@
 package core
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/andesdevroot/promptc/internal/analyzer"
+	"github.com/andesdevroot/promptc/internal/models"
+)
 
 var (
 	ErrMissingRole = errors.New("el rol del sistema es obligatorio ")
@@ -14,7 +19,7 @@ func NewCompiler() *Compiler {
 }
 
 // Compile toma el origen y devuelve el prompt optimizado o un error
-func (c *Compiler) Compile(ps PromptSource) (*Result, error) {
+func (c *Compiler) Compile(ps models.PromptSource) (*models.Result, error) {
 	// 1. Validaciones Críticas
 	if ps.Role == "" {
 		return nil, ErrMissingRole
@@ -24,13 +29,12 @@ func (c *Compiler) Compile(ps PromptSource) (*Result, error) {
 	}
 
 	// 2. Analisis y Scoring
-	warnings := c.analyze(ps)
-	score := 100 - (len(warnings) * 20)
+	warnings, score := analyzer.Analyze(ps)
 
 	// 3. Generacion (BINARIO)
 	output := c.render(ps)
 
-	return &Result{
+	return &models.Result{
 		RawPrompt: output,
 		Score:     score,
 		Warnings:  warnings,
@@ -38,20 +42,7 @@ func (c *Compiler) Compile(ps PromptSource) (*Result, error) {
 
 }
 
-func (c *Compiler) analyze(ps PromptSource) []string {
-	var warnings []string
-
-	if ps.Context == "" {
-		warnings = append(warnings, "Falta contexto adicional para mejores resultados")
-	}
-	if len(ps.Constraints) < 2 {
-		warnings = append(warnings, "Las restricciones son muy limitadas")
-	}
-
-	return warnings
-}
-
-func (c *Compiler) render(ps PromptSource) string {
+func (c *Compiler) render(ps models.PromptSource) string {
 	// Implementación básica de renderizado
 	constraintsStr := ""
 	for _, constraint := range ps.Constraints {

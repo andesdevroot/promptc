@@ -3,13 +3,13 @@ package parser
 import (
 	"os"
 
-	"github.com/andesdevroot/promptc/internal/core"
+	"github.com/andesdevroot/promptc/internal/models"
 	"gopkg.in/yaml.v3"
 )
 
 // ParserFile lee un archivo YAML y lo convierte en un PromptSource
-func ParserFile(filePath string) (core.PromptSource, error) {
-	var source core.PromptSource
+func ParserFile(filePath string) (models.PromptSource, error) {
+	var source models.PromptSource
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {

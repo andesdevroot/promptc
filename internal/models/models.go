@@ -1,4 +1,4 @@
-package core
+package models
 
 // PromptSource representa la entrada de nuestro compilador
 // Lo mantenemos agnóstico al formato (YAML/JSON)
