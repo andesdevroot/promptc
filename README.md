@@ -86,17 +86,27 @@ El flujo de compilación sigue los estándares de diseño de sistemas de softwar
 ### Requisitos previos
 * **Go** 1.21 o superior instalado en tu sistema.
 
-### Desde el código fuente
+## 🛠️ Instalación y Configuración
+
+### 1. Instalación Rápida (Recomendado)
+Instala `promptc` de forma global en tu sistema con un solo comando:
+
 ```bash
-# 1. Clonar el repositorio
-git clone [https://github.com/andesdevroot/promptc.git](https://github.com/andesdevroot/promptc.git)
-cd promptc
+curl -fsSL https://raw.githubusercontent.com/andesdevroot/promptc/master/install.sh | bash
+```
 
-# 2. Descargar dependencias
-go mod tidy
+### 2. Configuración Inicial
+Una vez instalado, debes configurar tu motor de IA. PromptC es agnóstico y guarda tus credenciales de forma segura en `~/.promptc/config.yaml`.
 
-# 3. Compilar el binario
-go build -o promptc ./cmd/promptc
+```bash
+promptc config
+```
+*Sigue las instrucciones en pantalla para elegir tu proveedor (Gemini) e ingresar tu API Key.*
+
+### 3. Verificar Instalación
+```bash
+promptc version
+promptc config view
 ```
 
 ### Verificación
