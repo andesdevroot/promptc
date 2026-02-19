@@ -18,5 +18,11 @@ vendor/
 # Test coverage
 *.out
 
-promptc
-promptc-*
+# Solo ignorar los ejecutables en la raíz
+/promptc
+/promptc-*
+
+# Ignorar configuración local
+.promptc/
+
+
