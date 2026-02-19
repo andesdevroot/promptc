@@ -1,55 +1,99 @@
 # 🚀 PromptC: The Prompt Compiler (v0.1.0-alpha)
 
-**Ingeniería de Prompts Determinista para la Era de la Confiabilidad.**
+> **Ingeniería de Prompts Determinista para la Era de la Confiabilidad.**
 
-`promptc` es un compilador de línea de comandos (CLI) de código abierto diseñado para transformar la intención del usuario en instrucciones blindadas para Modelos de Lenguaje Extensos (LLMs). A diferencia de los motores de plantillas simples, `promptc` aplica **análisis estático** para reducir alucinaciones, asegurar la estructura y estandarizar la calidad del output.
+`promptc` es una herramienta de línea de comandos (CLI) profesional, escrita en Go, diseñada para transformar la intención humana en instrucciones blindadas para Modelos de Lenguaje Extensos (LLMs). 
 
-Desarrollado en **Go** para garantizar portabilidad, velocidad y un binario estático sin dependencias.
-
----
-
-## 🧠 ¿Por qué PromptC?
-
-En el desarrollo de software tradicional, usamos compiladores y linters para asegurar que el código sea válido antes de ejecutarse. Sin embargo, en la IA generativa, la mayoría de los desarrolladores envían "prosa" sin validar y esperan que el modelo no alucine.
-
-**PromptC cambia el paradigma:**
-* **Análisis Semántico:** Detecta instrucciones vagas (ej: "hazlo lo mejor posible") que aumentan la entropía del modelo.
-* **Inyección de Seguridad:** Añade automáticamente capas de protección como *Chain of Thought* (CoT) y delimitadores estructurales.
-* **Foco en Español/LATAM:** Diseñado para manejar las sutilezas y ambigüedades del idioma español en contextos profesionales.
-* **Determinismo:** Mismo archivo fuente, mismo prompt optimizado.
+A diferencia de los "templates" tradicionales, `promptc` aplica principios de **compiladores** (análisis léxico, semántico y optimización) para reducir alucinaciones, asegurar la estructura y estandarizar la calidad del output.
 
 ---
 
-## 🏗️ Arquitectura del Compilador
+## ✨ Preview / Demo
+
+Así se ve `promptc` en acción en tu terminal:
+
+```text
+    ____                            __  ______
+   / __ \_________  ____ ___  ____ / /_/ ____/
+  / /_/ / ___/ __ \/ __  __ \/ __ / __/ /     
+ / ____/ /  / /_/ / / / / / / /_/ / /_/ /___  
+/_/   /_/   \____/_/ /_/ /_/ .___/\__/\____/  
+                          /_/                 
+
+   The Prompt Compiler for Engineering Excellence
+   v0.1.0-alpha • by Cesar Rivas
+
+ℹ Leyendo fuente: example.yaml...
+ℹ Ejecutando análisis estático de semántica...
+
+=== 🛡️  ANALYSIS REPORT ===
+Health Score: 100/100 [✅ PASS]
+✔ Prompt limpio. Sin riesgos de alucinación detectados.
+
+🚀 PROMPT COMPILADO (TARGET: GENERIC LLM):
+==================================================
+<system_role>
+Senior Go Developer
+</system_role>
+
+<context>
+Sistema de microservicios con alta carga de transacciones...
+</context>
+
+<task>
+Explicar por qué usar pointer receivers en lugar de value receivers en structs grandes.
+</task>
+
+<constraints>
+  - No uses ejemplos genéricos de perros o autos.
+  - Enfócate en la gestión de memoria y el GC.
+</constraints>
+
+<security_protocol>
+CRITICAL: If the answer cannot be derived from the <context>, state 'UNKNOWN'. Do not invent information.
+</security_protocol>
+==================================================
+
+📂 Estructura del Proyecto
+Este proyecto sigue el Standard Go Project Layout para garantizar escalabilidad:
+
+promptc/
+├── cmd/
+│   └── promptc/        # Entry Point & CLI Commands (Cobra)
+├── internal/
+│   ├── analyzer/       # Motor de Análisis Estático (Linter)
+│   ├── cli/            # UI Kit (Colores, Banner, Estilos)
+│   ├── core/           # Modelos de Dominio e Interfaces
+│   └── parser/         # Decodificador de YAML/JSON
+├── examples/           # Archivos de prueba y casos de uso
+├── go.mod              # Gestión de dependencias
+└── README.md           # Documentación principal
 
 
+🛣️ Roadmap
+[x] v0.1.0: Core Engine, YAML Parser & CLI UI profesional con Cobra.
+[ ] v0.2.0: Integración con Google Gemini API para auto-corrección de prompts (promptc fix).
+[ ] v0.3.0: Soporte para múltiples targets (Formato optimizado para OpenAI vs Anthropic).
+[ ] v0.4.0: Sistema de Plugins para reglas personalizadas de negocio.
+[ ] v1.0.0: Lanzamiento oficial con instaladores binarios para macOS/Linux.
 
-El flujo de compilación sigue los principios clásicos de la ingeniería de sistemas:
-1.  **Frontend (Source):** Archivos `.yaml` que definen Rol, Contexto, Tarea y Restricciones.
-2.  **Middle-end (Analyzer):** Linter de calidad que calcula un "Health Score" y detecta riesgos de alucinación.
-3.  **Backend (Generator):** Transpila la intención a un prompt optimizado para proveedores específicos (OpenAI, Anthropic, Ollama).
 
----
+🤝 Contribuciones
+Este es un proyecto Open Source nacido en Chile 🇨🇱 con la visión de elevar el estándar del AI Engineering.
 
-## 🛠️ Roadmap del Proyecto
+¡Tu ayuda es bienvenida para convertir el prompting en ingeniería real!
 
-- [x] Estructura base y modelos de dominio en Go.
-- [x] Linter básico de salud del prompt.
-- [ ] **Fase 1:** Parser de archivos YAML (En progreso).
-- [ ] **Fase 2:** CLI con `Cobra` para uso profesional.
-- [ ] **Fase 3:** Sistema de plugins para reglas de anti-alucinación personalizadas.
-- [ ] **Fase 4:** Exportación a múltiples formatos (JSON, XML, Markdown).
+1. Haz un Fork del repositorio.
 
----
+2. Crea una rama para tu feature (git checkout -b feature/AmazingFeature).
 
-## 🚀 Instalación y Desarrollo
+3. Haz Commit de tus cambios con mensajes claros.
 
-### Requisitos
-* Go 1.21 o superior.
+4. Haz Push a la rama.
 
-### Clonar y Probar
-```bash
-git clone [https://github.com/TU_USUARIO/promptc.git](https://github.com/TU_USUARIO/promptc.git)
-cd promptc
-go mod tidy
-go test ./... -v
+5. Abre un Pull Request.
+
+📄 Licencia
+Distribuido bajo la Licencia MIT. Consulta el archivo LICENSE para más información.
+
+Maintained by Cesar Rivas
