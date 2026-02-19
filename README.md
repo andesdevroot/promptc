@@ -54,46 +54,6 @@ CRITICAL: If the answer cannot be derived from the <context>, state 'UNKNOWN'. D
 </security_protocol>
 ==================================================
 
-📂 Estructura del Proyecto
-Este proyecto sigue el Standard Go Project Layout para garantizar escalabilidad:
-
-promptc/
-├── cmd/
-│   └── promptc/        # Entry Point & CLI Commands (Cobra)
-├── internal/
-│   ├── analyzer/       # Motor de Análisis Estático (Linter)
-│   ├── cli/            # UI Kit (Colores, Banner, Estilos)
-│   ├── core/           # Modelos de Dominio e Interfaces
-│   └── parser/         # Decodificador de YAML/JSON
-├── examples/           # Archivos de prueba y casos de uso
-├── go.mod              # Gestión de dependencias
-└── README.md           # Documentación principal
 
 
-🛣️ Roadmap
-[x] v0.1.0: Core Engine, YAML Parser & CLI UI profesional con Cobra.
-[ ] v0.2.0: Integración con Google Gemini API para auto-corrección de prompts (promptc fix).
-[ ] v0.3.0: Soporte para múltiples targets (Formato optimizado para OpenAI vs Anthropic).
-[ ] v0.4.0: Sistema de Plugins para reglas personalizadas de negocio.
-[ ] v1.0.0: Lanzamiento oficial con instaladores binarios para macOS/Linux.
 
-
-🤝 Contribuciones
-Este es un proyecto Open Source nacido en Chile 🇨🇱 con la visión de elevar el estándar del AI Engineering.
-
-¡Tu ayuda es bienvenida para convertir el prompting en ingeniería real!
-
-1. Haz un Fork del repositorio.
-
-2. Crea una rama para tu feature (git checkout -b feature/AmazingFeature).
-
-3. Haz Commit de tus cambios con mensajes claros.
-
-4. Haz Push a la rama.
-
-5. Abre un Pull Request.
-
-📄 Licencia
-Distribuido bajo la Licencia MIT. Consulta el archivo LICENSE para más información.
-
-Maintained by Cesar Rivas
