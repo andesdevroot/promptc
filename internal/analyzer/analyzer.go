@@ -3,63 +3,50 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/andesdevroot/promptc/internal/models"
+	"github.com/andesdevroot/promptc/internal/core"
 )
 
-// Issue representa un problema encontrado en el prompt
-type Issue struct {
-	Type    string // "CRITICAL", "WARNING", "TIP"
-	Message string
-}
-
-// Analyze realiza el análisis estático del prompt
-func Analyze(p models.PromptSource) (int, []Issue) {
+// Heurísticas de Anti-Alucinación y Calidad
+func Analyze(p core.PromptSource) (int, []string) {
 	score := 100
-	var issues []Issue
+	var issues []string
 
-	// 1. REGLA: Contexto Insuficiente (Riesgo Alto)
-	if len(p.Context) < 20 {
-		score -= 40
-		issues = append(issues, Issue{
-			Type:    "CRITICAL",
-			Message: "El contexto es peligrosamente corto. El modelo tenderá a alucinar.",
-		})
+	// 1. Validación de Rol (Evita alucinaciones de identidad)
+	if len(p.Role) < 10 {
+		score -= 20
+		issues = append(issues, "Rol demasiado vago. Define expertise (ej: 'Senior Cloud Architect' vs 'Arquitecto').")
 	}
 
-	// 2. REGLA: Ambigüedad en la Tarea
-	vagueWords := []string{"rápido", "breve", "mejor posible", "algo así", "creo"}
-	taskLower := strings.ToLower(p.Task)
-	for _, word := range vagueWords {
-		if strings.Contains(taskLower, word) {
-			score -= 10
-			issues = append(issues, Issue{
-				Type:    "WARNING",
-				Message: "Palabra ambigua detectada: '" + word + "'. Sé más específico.",
-			})
-		}
-	}
-
-	// 3. REGLA: Falta de Constraints Negativos (Security)
-	hasNegative := false
+	// 2. Validación de Restricciones (Crucial para Anti-Hallucination)
+	hasNegativeConstraint := false
 	for _, c := range p.Constraints {
-		cLower := strings.ToLower(c)
-		if strings.Contains(cLower, "no ") || strings.Contains(cLower, "evita") || strings.Contains(cLower, "nunca") {
-			hasNegative = true
-			break
+		lowC := strings.ToLower(c)
+		if strings.Contains(lowC, "no") || strings.Contains(lowC, "evita") || strings.Contains(lowC, "sin") {
+			hasNegativeConstraint = true
 		}
 	}
-	if !hasNegative {
-		score -= 15
-		issues = append(issues, Issue{
-			Type:    "SECURITY",
-			Message: "Faltan 'Negative Constraints'. Debes decir explícitamente qué NO hacer.",
-		})
+
+	if !hasNegativeConstraint {
+		score -= 30
+		issues = append(issues, "Faltan restricciones negativas. Sin límites, el LLM es propenso a alucinar.")
 	}
 
-	// Normalización del score
-	if score < 0 {
-		score = 0
+	// 3. Diferenciador: Análisis de Tono en Español
+	if !detectSpanishClarity(p.Task) {
+		score -= 15
+		issues = append(issues, "La tarea principal carece de verbos de acción fuertes en español (ej: 'Analiza', 'Genera', 'Valida').")
 	}
 
 	return score, issues
+}
+
+func detectSpanishClarity(task string) bool {
+	// Verbos de alto impacto para LLMs en español
+	strongVerbs := []string{"Analiza", "Genera", "Escribe", "Valida", "Calcula", "Resume", "Traduce"}
+	for _, v := range strongVerbs {
+		if strings.Contains(strings.ToLower(task), strings.ToLower(v)) {
+			return true
+		}
+	}
+	return false
 }

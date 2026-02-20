@@ -1,19 +1,27 @@
-// internal/parser/parser.go
 package parser
 
 import (
 	"os"
 
-	"github.com/andesdevroot/promptc/internal/models"
 	"gopkg.in/yaml.v3"
+
+	// Importamos el core del SDK
+	"github.com/andesdevroot/promptc/pkg/core"
 )
 
-func ParseFile(filePath string) (models.PromptSource, error) {
-	var source models.PromptSource
-	data, err := os.ReadFile(filePath)
+// ParseFile ahora devuelve el tipo oficial del SDK: core.Prompt
+func ParseFile(path string) (core.Prompt, error) {
+	var p core.Prompt
+
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return source, err
+		return p, err
 	}
-	err = yaml.Unmarshal(data, &source)
-	return source, err
+
+	err = yaml.Unmarshal(data, &p)
+	if err != nil {
+		return p, err
+	}
+
+	return p, nil
 }

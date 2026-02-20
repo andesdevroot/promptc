@@ -6,15 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/andesdevroot/promptc/internal/analyzer"
 	"github.com/andesdevroot/promptc/internal/config"
-	"github.com/andesdevroot/promptc/internal/models"
+	"github.com/andesdevroot/promptc/internal/core"
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 )
 
 // AutoFix toma un prompt deficiente y le pide a Gemini que lo reescriba.
-func AutoFix(source models.PromptSource, issues []analyzer.Issue) (string, error) {
+func AutoFix(source core.PromptSource, issues []string) (string, error) {
 	// 1. Intentamos cargar la configuración local
 	cfg, err := config.Load()
 	if err != nil {
@@ -54,7 +53,7 @@ Asegúrate de:
 
 	var issuesList strings.Builder
 	for _, issue := range issues {
-		issuesList.WriteString(fmt.Sprintf("- [%s]: %s\n", issue.Type, issue.Message))
+		issuesList.WriteString(fmt.Sprintf("- %s\n", issue))
 	}
 
 	userPrompt := fmt.Sprintf(`
