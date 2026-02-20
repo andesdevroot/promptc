@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/andesdevroot/promptc/internal/config"
-	"github.com/andesdevroot/promptc/internal/core"
+	"github.com/andesdevroot/promptc/pkg/core"
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 )
 
 // AutoFix toma un prompt deficiente y le pide a Gemini que lo reescriba.
-func AutoFix(source core.PromptSource, issues []string) (string, error) {
+func AutoFix(source core.Prompt, issues []string) (string, error) {
 	// 1. Intentamos cargar la configuración local
 	cfg, err := config.Load()
 	if err != nil {
@@ -41,7 +41,7 @@ func AutoFix(source core.PromptSource, issues []string) (string, error) {
 	}
 	defer client.Close()
 
-	model := client.GenerativeModel("gemini-2.5-flash")
+	model := client.GenerativeModel("gemini-1.5-flash")
 
 	systemInstruction := `Eres un AI Prompt Engineer Senior.
 Tu tarea es tomar un archivo de definición de prompt (YAML) deficiente y corregirlo basándote en los errores de un linter (análisis estático).
@@ -74,7 +74,7 @@ Por favor, devuelve la versión corregida en formato YAML puro:`,
 		source.Task,
 		formatConstraintsList(source.Constraints))
 
-	model.SystemInstruction = genai.NewUserContent(genai.Text(systemInstruction))
+	model.SystemInstruction = &genai.Content{Parts: []genai.Part{genai.Text(systemInstruction)}}
 
 	resp, err := model.GenerateContent(ctx, genai.Text(userPrompt))
 	if err != nil {

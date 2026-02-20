@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "promptc": {
+      "command": "/Users/cesarrivas/Desktop/GO/promptc/promptc",
+      "args": [],
+      "env": {
+        "PROMPTC_MACMINI_IP": "100.90.6.101",
+        "OPENROUTER_API_KEY": "TU_KEY_DE_OPENROUTER",
+        "GEMINI_API_KEY": "TU_KEY_DE_GEMINI"
+      }
+    }
+  }
+}

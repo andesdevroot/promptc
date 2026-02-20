@@ -1,16 +1,4 @@
-# 🚀 PromptC: The Prompt Compiler (v0.1.0-alpha)
-
-> **Ingeniería de Prompts Determinista para la Era de la Confiabilidad.**
-
-`promptc` es una herramienta de línea de comandos (CLI) profesional, escrita en Go, diseñada para transformar la intención humana en instrucciones blindadas para Modelos de Lenguaje Extensos (LLMs). 
-
-A diferencia de los "templates" tradicionales, `promptc` aplica principios de **compiladores** (análisis léxico, semántico y optimización) para reducir alucinaciones, asegurar la estructura y estandarizar la calidad del output.
-
----
-
-## ✨ Preview / Demo
-
-Así se ve `promptc` en acción en tu terminal:
+# 🚀 PROMPTC: The Prompt Compiler (v0.1.0-alpha)
 
 ```text
     ____                            __  ______
@@ -22,174 +10,92 @@ Así se ve `promptc` en acción en tu terminal:
 
    The Prompt Compiler for Engineering Excellence
    v0.1.0-alpha • by Cesar Rivas
-
-ℹ Leyendo fuente: example.yaml...
-ℹ Ejecutando análisis estático de semántica...
-
-=== 🛡️  ANALYSIS REPORT ===
-Health Score: 100/100 [✅ PASS]
-✔ Prompt limpio. Sin riesgos de alucinación detectados.
-
-🚀 PROMPT COMPILADO (TARGET: GENERIC LLM):
-==================================================
-<system_role>
-Senior Go Developer
-</system_role>
-
-<context>
-Sistema de microservicios con alta carga de transacciones...
-</context>
-
-<task>
-Explicar por qué usar pointer receivers en lugar de value receivers en structs grandes.
-</task>
-
-<constraints>
-  - No uses ejemplos genéricos de perros o autos.
-  - Enfócate en la gestión de memoria y el GC.
-</constraints>
-
-<security_protocol>
-CRITICAL: If the answer cannot be derived from the <context>, state 'UNKNOWN'. Do not invent information.
-</security_protocol>
-==================================================
 ```
 
----
+> **Ingeniería de Prompts Determinista para la Era de la Confiabilidad.**
 
-## 🧠 ¿Por qué PromptC?
+`PROMPTC` es una herramienta de sistema profesional, escrita en **Go**, diseñada para transformar la intención humana vaga en instrucciones blindadas para Modelos de Lenguaje Extensos (LLMs). 
 
-En el desarrollo de software tradicional, usamos compiladores, linters y tests unitarios antes de ir a producción. En la IA generativa, la mayoría envía "prosa" (texto libre) y espera lo mejor. 
-
-**PromptC cambia las "vibras" por ingeniería:**
-
-1.  **Análisis Semántico:** Detecta instrucciones vagas (ej: "hazlo rápido", "lo mejor posible") que aumentan la entropía del modelo.
-2.  **Architecture-as-Code:** Tus prompts son archivos `.yaml` versionables en Git, no strings mágicos escondidos en el código.
-3.  **Security Injection:** Inyecta automáticamente capas de protección (Chain of Thought, Delimiters, Safety Protocols).
-4.  **Developer Experience (DX):** CLI moderna con colores, reportes claros y banners, diseñada para integrarse en pipelines de CI/CD.
+A diferencia de los "templates" tradicionales, `PROMPTC` aplica principios de **compiladores** (análisis, optimización semántica y enrutamiento híbrido) para reducir alucinaciones, asegurar la estructura técnica y estandarizar la calidad del output en entornos de alta criticidad.
 
 ---
 
-## 🏗️ Arquitectura del Compilador
+## 💡 El Problema: El Abismo del Compliance en IA
 
-El flujo de compilación sigue los estándares de diseño de sistemas de software profesional:
+En industrias reguladas como la **Minería, Banca y Sector Legal**, el uso de LLMs comerciales presenta un riesgo inaceptable: la fuga de propiedad intelectual y datos sensibles hacia nubes públicas. Los ingenieros necesitan el poder de la IA en sus IDEs, pero las normativas (CMF, Sernageomin, GDPR) exigen soberanía sobre los datos.
 
-1.  **Source (.yaml):** Definición declarativa de la intención.
-2.  **Parser:** Validación sintáctica del archivo y mapeo a estructuras de Go.
-3.  **Analyzer (Linter):** Motor de reglas heurísticas que calcula un "Health Score" y detecta riesgos de alucinación.
-4.  **Compiler:** Transpila la estructura a un formato optimizado (XML Tags / Markdown) listo para inferencia de alta fidelidad.
+## 🛡️ La Solución: Arquitectura Soberana PROMPTC
+
+`PROMPTC` no es solo un optimizador; es un **Servidor MCP (Model Context Protocol)** que actúa como un puente seguro entre tu IDE y tu propia infraestructura:
+
+1.  **Inferencia Híbrida:** Enruta las solicitudes de optimización a través de un túnel **Tailscale** hacia nodos de computación privados (ej. un Mac mini local con Llama 3).
+2.  **Orquestación Autónoma:** Expone herramientas inteligentes que los LLMs (Claude, Cursor) pueden encadenar para construir soluciones complejas.
+3.  **Determinismo Regional:** Fuerza el uso de terminología técnica en español chileno/latino, eliminando el "Spanglish" y las alucinaciones culturales de los modelos base.
 
 ---
 
-## 🛠️ Instalación
+## ✨ Características Principales
 
-### Requisitos previos
-* **Go** 1.21 o superior instalado en tu sistema.
+* **Tool Chaining:** Permite al LLM buscar plantillas industriales y optimizarlas en un solo flujo de pensamiento.
+* **Librería de Componentes (Resources):**
+    * `PROMPTC_MINERIA_BASE`: Foco en seguridad de faena, protocolos EPP y normativa Sernageomin.
+    * `PROMPTC_BANCA_RIESGO`: Alineado con normativas CMF, prevención de fraudes y lavado de activos.
+    * `PROMPTC_LEGAL_CONTRATOS`: Estructuras de derecho corporativo y revisión de cláusulas críticas.
+* **Seguridad por Diseño:** Comunicación vía `stdio` (entrada/salida estándar), garantizando que el servidor MCP solo responda a procesos autorizados localmente.
+
+---
 
 ## 🛠️ Instalación y Configuración
 
-### 1. Instalación Rápida (Recomendado)
-Instala `promptc` de forma global en tu sistema con un solo comando:
-
+### 1. Compilación del Binario
+Requiere Go 1.21 o superior.
 ```bash
-curl -fsSL https://raw.githubusercontent.com/andesdevroot/promptc/master/install.sh | bash
+go mod tidy
+go build -o promptc ./cmd/promptc/main.go
 ```
 
-### 2. Configuración Inicial
-Una vez instalado, debes configurar tu motor de IA. PromptC es agnóstico y guarda tus credenciales de forma segura en `~/.promptc/config.yaml`.
+### 2. Integración con Claude Desktop / Cursor
+Añade el servidor a tu configuración de MCP (`claude_desktop_config.json`):
 
-```bash
-promptc config
-```
-*Sigue las instrucciones en pantalla para elegir tu proveedor (Gemini) e ingresar tu API Key.*
-
-### 3. Verificar Instalación
-```bash
-promptc version
-promptc config view
-```
-
-### Verificación
-Ejecuta el siguiente comando para verificar la instalación y ver el banner:
-```bash
-./promptc --help
+```json
+{
+  "mcpServers": {
+    "PROMPTC": {
+      "command": "/Users/TU_USUARIO/Desktop/GO/promptc/promptc",
+      "env": {
+        "PROMPTC_TU_MAQUINA": "TU_IP"
+      }
+    }
+  }
+}
 ```
 
 ---
 
-## 🚀 Uso Básico
+## 🎮 Caso de Uso: Orquestación en Acción
 
-### 1. Define tu Prompt (`example.yaml`)
-Crea un archivo YAML con la estructura estándar de PromptC:
+Una vez configurado, puedes interactuar con **PROMPTC** de forma natural en tu chat de IA:
 
-```yaml
-role: "Senior Data Engineer"
-context: "Estamos migrando un pipeline de ETL de Python a Go."
-task: "Explica cómo manejar errores en goroutines de forma segura."
-constraints:
-  - "No uses librerías externas."
-  - "Enfócate en la concurrencia."
-  - "Evita explicaciones teóricas largas, ve al código."
-```
+**Usuario:** *"Usa la plantilla PROMPTC_BANCA_RIESGO y compílala para un agente que analice fraudes en transferencias Swift."*
 
-### 2. Compila y Analiza
-Ejecuta el comando `compile` pasándole tu archivo de configuración:
-
-```bash
-./promptc compile example.yaml
-```
-
-Si tu prompt es débil o ambiguo, `promptc` entregará un reporte con niveles de error **WARNING** o **CRITICAL** indicando qué debes mejorar para asegurar un output de IA confiable.
+**PROMPTC Engine:**
+1.  Llamada a `get_template("PROMPTC_BANCA_RIESGO")` -> Extrae reglas de cumplimiento local.
+2.  Llamada a `optimize_prompt(...)` -> Cruza los datos hacia el nodo privado (Mac mini).
+3.  **Resultado:** Un prompt de sistema blindado, listo para producción.
 
 ---
 
-## 📂 Estructura del Proyecto
+## 🏗️ Estructura del Proyecto
 
-Este proyecto sigue el **Standard Go Project Layout** para garantizar escalabilidad:
-
-```text
-promptc/
-├── cmd/
-│   └── promptc/        # Entry Point & CLI Commands (Cobra)
-├── internal/
-│   ├── analyzer/       # Motor de Análisis Estático (Linter)
-│   ├── cli/            # UI Kit (Colores, Banner, Estilos)
-│   ├── core/           # Modelos de Dominio e Interfaces
-│   └── parser/         # Decodificador de YAML/JSON
-├── examples/           # Archivos de prueba y casos de uso
-├── go.mod              # Gestión de dependencias
-└── README.md           # Documentación principal
-```
+* `cmd/promptc`: Servidor JSON-RPC 2.0 nativo (Stdio Bridge).
+* `pkg/sdk`: Orquestador de inferencia y lógica de compilación.
+* `pkg/core`: Contratos y modelos de dominio para la ingeniería de prompts.
+* `pkg/provider`: Implementaciones para Ollama (Local) y OpenRouter (Cloud fallback).
 
 ---
 
-## 🛣️ Roadmap
-
-- [x] **v0.1.0:** Core Engine, YAML Parser & CLI UI profesional con Cobra.
-- [ ] **v0.2.0:** Integración con **Google Gemini API** para auto-corrección de prompts (`promptc fix`).
-- [ ] **v0.3.0:** Soporte para múltiples targets (Formato optimizado para OpenAI vs Anthropic).
-- [ ] **v0.4.0:** Sistema de Plugins para reglas personalizadas de negocio.
-- [ ] **v1.0.0:** Lanzamiento oficial con instaladores binarios para macOS/Linux.
+## 📝 Licencia
+Este proyecto es Open Source bajo la licencia **MIT**.
 
 ---
-
-## 🤝 Contribuciones
-
-Este es un proyecto Open Source nacido en **Chile** 🇨🇱 con la visión de elevar el estándar del AI Engineering. 
-
-¡Tu ayuda es bienvenida para convertir el prompting en ingeniería real!
-1.  Haz un Fork del repositorio.
-2.  Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`).
-3.  Haz Commit de tus cambios con mensajes claros.
-4.  Haz Push a la rama.
-5.  Abre un Pull Request.
-
----
-
-## 📄 Licencia
-
-Distribuido bajo la Licencia **MIT**. Consulta el archivo `LICENSE` para más información.
-
----
-**Maintained by [Cesar Rivas](https://github.com/andesdevroot)**
-
+**PROMPTC: Elevando la ingeniería de prompts al estándar de la ingeniería de software.** Desarrollado con ❤️ en Chile / La Serena por **Cesar Rivas**.

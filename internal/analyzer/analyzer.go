@@ -3,11 +3,11 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/andesdevroot/promptc/internal/core"
+	"github.com/andesdevroot/promptc/pkg/core"
 )
 
 // Heurísticas de Anti-Alucinación y Calidad
-func Analyze(p core.PromptSource) (int, []string) {
+func Analyze(p core.Prompt) (int, []string) {
 	score := 100
 	var issues []string
 

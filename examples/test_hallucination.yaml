@@ -1,0 +1,6 @@
+role: "Asistente de IA"
+context: "Quiero escribir un artículo."
+task: "Escribe sobre drones en la agricultura."
+constraints:
+  - "Que sea interesante."
+  - "Usa un tono amable."

@@ -14,70 +14,60 @@ import (
 
 var fixCmd = &cobra.Command{
 	Use:   "fix [archivo.yaml]",
-	Short: "Analiza y auto-optimiza un prompt usando el motor de IA de PromptC",
-	Long:  `Analiza la estructura de un prompt y utiliza Gemini Pro para corregir deficiencias semánticas y de determinismo.`,
+	Short: "Analiza y repara un prompt con redundancia de IA",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cli.PrintBanner()
-
-		// 1. Cargar configuración de usuario
-		cfg, err := config.Load()
-		if err != nil || cfg.APIKey == "" {
-			cli.PrintError("Error: API Key no configurada. Ejecuta 'promptc config' primero.")
-			os.Exit(1)
-		}
-
-		// 2. Parsear el archivo YAML usando el motor del SDK (pkg/core.Prompt)
+		cfg, _ := config.Load()
 		p, err := parser.ParseFile(args[0])
 		if err != nil {
-			cli.PrintError(fmt.Sprintf("Error al leer el prompt: %v", err))
+			fmt.Println("Error:", err)
 			os.Exit(1)
 		}
 
-		// 3. Inicializar el SDK
-		// Usamos context.Background() para la gestión de la conexión con la API de Google
 		ctx := context.Background()
-		promptcSDK, err := sdk.NewSDK(ctx, cfg.APIKey)
-		if err != nil {
-			cli.PrintError(fmt.Sprintf("Error al inicializar el SDK: %v", err))
+		promptcSDK, _ := sdk.NewSDK(ctx, cfg.APIKey, "")
+
+		analysis := promptcSDK.Analyze(p)
+		
+		analysisResult, ok := analysis.(map[string]interface{})
+		if !ok {
+			fmt.Println("Error: invalid analysis result type")
 			os.Exit(1)
 		}
 
-		// 4. Ejecutar el análisis técnico (Reglas del SDK)
-		cli.PrintSection("📋 Análisis de Calidad del SDK")
-		analysis := promptcSDK.Analyze(p)
+		score, ok := analysisResult["Score"].(float64)
+		if !ok {
+			fmt.Println("Error: Score field not found or invalid type")
+			os.Exit(1)
+		}
+		fmt.Printf("Score: %d/100\n", int(score))
 
-		// Mostrar el Score con color según su valor
-		renderScore(analysis.Score)
+		analysisResult, ok = analysis.(map[string]interface{})
+		if !ok {
+			fmt.Println("Error: invalid analysis result type")
+			os.Exit(1)
+		}
 
-		// 5. Lógica de Optimización si el Score es insuficiente
-		if !analysis.IsReliable {
-			cli.PrintWarning("⚠️  Calidad insuficiente para producción. Iniciando optimización...")
+		isReliable, ok := analysisResult["IsReliable"].(bool)
+		if !ok {
+			fmt.Println("Error: IsReliable field not found or invalid type")
+			os.Exit(1)
+		}
 
-			// Llamada al motor de IA del SDK para reparar el prompt
+		if !isReliable {
 			optimized, err := promptcSDK.Optimize(ctx, p)
 			if err != nil {
-				cli.PrintError(fmt.Sprintf("Error durante la optimización: %v", err))
+				fmt.Printf("\n❌ Error Crítico: %v\n", err)
 				os.Exit(1)
 			}
-
-			cli.PrintSuccess("✨ Prompt Optimizado por PromptC:")
-			fmt.Println("\n" + optimized)
+			cli.PrintSuccess("\n✨ Prompt Optimizado:")
+			fmt.Println("\n" + fmt.Sprint(optimized))
 		} else {
-			cli.PrintSuccess("✅ El prompt cumple con los estándares de ingeniería de PromptC.")
+			output, _ := promptcSDK.Engine.Compile(p)
+			fmt.Println("\n" + output)
 		}
 	},
-}
-
-// renderScore ayuda a visualizar la calidad en la terminal
-func renderScore(score int) {
-	color := cli.ColorGreen
-	if score < 80 {
-		color = cli.ColorRed
-	} else if score < 95 {
-		color = cli.ColorYellow
-	}
-	fmt.Printf("Score de Ingeniería: %s%d/100%s\n\n", color, score, cli.ColorReset)
 }
 
 func init() {

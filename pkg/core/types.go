@@ -1,23 +1,25 @@
 package core
 
-import "time"
+import (
+	"time"
+)
 
-// Prompt es la unidad fundamental del SDK.
+// Prompt representa la unidad fundamental de datos para el SDK.
 type Prompt struct {
-	ID          string            `json:"id"`
-	Version     string            `json:"version"`
-	Role        string            `json:"role"`
-	Context     string            `json:"context"`
-	Task        string            `json:"task"`
-	Constraints []string          `json:"constraints"`
-	Variables   map[string]string `json:"variables"`
-	CreatedAt   time.Time         `json:"created_at"`
+	ID          string            `yaml:"id" json:"id"`
+	Version     string            `yaml:"version" json:"version"`
+	Role        string            `yaml:"role" json:"role"`
+	Context     string            `yaml:"context" json:"context"`
+	Task        string            `yaml:"task" json:"task"`
+	Constraints []string          `yaml:"constraints" json:"constraints"`
+	Variables   map[string]string `yaml:"variables" json:"variables"`
+	CreatedAt   time.Time         `yaml:"created_at" json:"created_at"`
 }
 
-// Result es lo que devuelve el compilador tras analizar un prompt.
+// Result contiene el veredicto técnico del análisis de un prompt.
 type Result struct {
-	Score       int      `json:"score"`       // 0-100
-	IsReliable  bool     `json:"is_reliable"` // ¿Pasa los filtros anti-alucinación?
-	Issues      []string `json:"issues"`      // Problemas encontrados
-	Suggestions []string `json:"suggestions"` // Cómo mejorarlo (especialmente en español)
+	Score       int      `json:"score"`
+	IsReliable  bool     `json:"is_reliable"`
+	Issues      []string `json:"issues"`
+	Suggestions []string `json:"suggestions"`
 }

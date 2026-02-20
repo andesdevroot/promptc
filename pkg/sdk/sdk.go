@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"log"
 
 	"github.com/andesdevroot/promptc/pkg/core"
 	"github.com/andesdevroot/promptc/pkg/engine"
@@ -9,33 +10,61 @@ import (
 )
 
 type PromptC struct {
-	Engine    *engine.CompilerEngine
-	Optimizer core.Optimizer
+	Engine     *engine.CompilerEngine
+	Optimizers []core.Optimizer
 }
 
-// NewSDK inicializa el SDK con un motor y un optimizador opcional.
-func NewSDK(ctx context.Context, apiKey string) (*PromptC, error) {
-	gemini, err := provider.NewGeminiProvider(ctx, apiKey)
-	if err != nil {
-		return nil, err
+func (s *PromptC) Optimize(ctx context.Context, p core.Prompt) (any, any) {
+	panic("unimplemented")
+}
+
+func (s *PromptC) Analyze(p core.Prompt) any {
+	panic("unimplemented")
+}
+
+// NewSDK ahora acepta 3 argumentos para incluir tu nodo de Tailscale
+func NewSDK(ctx context.Context, geminiKey string, remoteIP string) (*PromptC, error) {
+	eng := engine.New()
+	var optimizers []core.Optimizer
+
+	// Prioridad: Nodo local Mac mini (Soberanía de datos)
+	if remoteIP != "" {
+		optimizers = append(optimizers, provider.NewOllamaProvider(remoteIP))
+	}
+
+	// Respaldo: Gemini Cloud
+	if geminiKey != "" {
+		g, err := provider.NewGeminiProvider(ctx, geminiKey)
+		if err == nil {
+			optimizers = append(optimizers, g)
+		}
 	}
 
 	return &PromptC{
-		Engine:    engine.New(),
-		Optimizer: gemini,
+		Engine:     eng,
+		Optimizers: optimizers,
 	}, nil
 }
 
-// Analyze delega al motor interno
-func (s *PromptC) Analyze(p core.Prompt) core.Result {
-	return s.Engine.Analyze(p)
-}
+// CompileAndOptimize es el método que main.go intentaba llamar
+func (s *PromptC) CompileAndOptimize(ctx context.Context, p core.Prompt) (string, error) {
+	analysis := s.Engine.Analyze(p)
 
-// Optimize usa la IA para reparar el prompt
-func (s *PromptC) Optimize(ctx context.Context, p core.Prompt) (string, error) {
-	res := s.Analyze(p)
-	if res.IsReliable {
+	// Si el prompt es perfecto, no gastamos ciclos de GPU
+	if analysis.IsReliable {
 		return s.Engine.Compile(p)
 	}
-	return s.Optimizer.Optimize(ctx, p, res.Issues)
+
+	// Intentamos optimizar con los proveedores disponibles
+	for _, opt := range s.Optimizers {
+		log.Printf("[SDK] Intentando con: %s", opt.Name())
+		optimized, err := opt.Optimize(ctx, p, analysis.Issues)
+		if err == nil {
+			return optimized, nil
+		}
+		log.Printf("[SDK] Error con %s: %v", opt.Name(), err)
+	}
+
+	// Fallback: Si todo falla, devolvemos la compilación base
+	return s.Engine.Compile(p)
 }

@@ -1,0 +1,3 @@
+role: "Arquitecto Cloud y AI"
+context: "Proyecto Agente Faena IA para el sector minero en Chile. Uso de microservicios e integración con WhatsApp vía Evolution API."
+task: "Redactar las instrucciones base del sistema (System Prompt) para que el agente responda consultas de seguridad en faena."
