@@ -12,58 +12,63 @@
    v0.1.0-alpha • by Cesar Rivas
 ```
 
-> **Ingeniería de Prompts Determinista para la Era de la Confiabilidad.**
-
-`PROMPTC` es una herramienta de sistema profesional, escrita en **Go**, diseñada para transformar la intención humana vaga en instrucciones blindadas para Modelos de Lenguaje Extensos (LLMs). 
-
-A diferencia de los "templates" tradicionales, `PROMPTC` aplica principios de **compiladores** (análisis, optimización semántica y enrutamiento híbrido) para reducir alucinaciones, asegurar la estructura técnica y estandarizar la calidad del output en entornos de alta criticidad.
+> **"Prompt Engineering is Software Engineering."**
+> PROMPTC es un compilador nativo desarrollado en Go, diseñado para resolver el vacío de soberanía y determinismo en la adopción de IA Generativa para industrias críticas en LATAM.
 
 ---
 
-## 💡 El Problema: El Abismo del Compliance en IA
+## 🏗️ Visión de Arquitectura: Private-First AI
 
-En industrias reguladas como la **Minería, Banca y Sector Legal**, el uso de LLMs comerciales presenta un riesgo inaceptable: la fuga de propiedad intelectual y datos sensibles hacia nubes públicas. Los ingenieros necesitan el poder de la IA en sus IDEs, pero las normativas (CMF, Sernageomin, GDPR) exigen soberanía sobre los datos.
+En sectores regulados como la **Minería (Sernageomin), Banca (CMF) y el Sector Legal**, la lógica de negocio es un activo crítico que no puede ser expuesto a nubes públicas. **PROMPTC** actúa como un **L7 Gateway para LLMs**, permitiendo que herramientas como Claude Desktop o Cursor consuman contextos privados sin que la data sensible abandone la infraestructura corporativa.
 
-## 🛡️ La Solución: Arquitectura Soberana PROMPTC
+### Diferenciadores Core
 
-`PROMPTC` no es solo un optimizador; es un **Servidor MCP (Model Context Protocol)** que actúa como un puente seguro entre tu IDE y tu propia infraestructura:
-
-1.  **Inferencia Híbrida:** Enruta las solicitudes de optimización a través de un túnel **Tailscale** hacia nodos de computación privados (ej. un Mac mini local con Llama 3).
-2.  **Orquestación Autónoma:** Expone herramientas inteligentes que los LLMs (Claude, Cursor) pueden encadenar para construir soluciones complejas.
-3.  **Determinismo Regional:** Fuerza el uso de terminología técnica en español chileno/latino, eliminando el "Spanglish" y las alucinaciones culturales de los modelos base.
+1.  **Soberanía de Datos**: Orquestación de inferencia local mediante túneles **Tailscale** hacia nodos privados (Mac mini, Ollama, vLLM).
+2.  **Abstracción de Vendor**: Compila una vez, despliega en cualquier modelo. Control total sobre el flujo de tokens y el presupuesto de inferencia.
+3.  **Compilación Determinista**: Transforma lenguaje ambiguo en estructuras técnicas blindadas, eliminando el "Spanglish" y asegurando el cumplimiento de normativas regionales.
 
 ---
 
 ## ✨ Características Principales
 
-* **Tool Chaining:** Permite al LLM buscar plantillas industriales y optimizarlas en un solo flujo de pensamiento.
-* **Librería de Componentes (Resources):**
-    * `PROMPTC_MINERIA_BASE`: Foco en seguridad de faena, protocolos EPP y normativa Sernageomin.
-    * `PROMPTC_BANCA_RIESGO`: Alineado con normativas CMF, prevención de fraudes y lavado de activos.
-    * `PROMPTC_LEGAL_CONTRATOS`: Estructuras de derecho corporativo y revisión de cláusulas críticas.
-* **Seguridad por Diseño:** Comunicación vía `stdio` (entrada/salida estándar), garantizando que el servidor MCP solo responda a procesos autorizados localmente.
+* **Servidor MCP Nativo**: Implementación completa del *Model Context Protocol* sobre JSON-RPC 2.0 para integración directa con el ecosistema Anthropic y Cursor.
+* **Binario Estático en Go**: Cero dependencias en tiempo de ejecución. Rendimiento de alto nivel con consumo mínimo de recursos en workstations y servidores de borde.
+* **Prompt-as-Code (PaC)**: Gestión de plantillas mediante componentes versionables y pre-certificados:
+    * `PROMPTC_MINERIA_BASE`: Protocolos EPP, seguridad de faena y normativa minera local.
+    * `PROMPTC_BANCA_RIESGO`: Alineado con normativas CMF y prevención de fraude (AML).
+    * `PROMPTC_LEGAL_CONTRATOS`: Revisión de cláusulas críticas y derecho corporativo.
+* **Motor Anti-Spanglish**: Validación semántica estricta que fuerza el uso de terminología técnica precisa en español nativo, eliminando alucinaciones culturales.
 
 ---
 
 ## 🛠️ Instalación y Configuración
 
-### 1. Compilación del Binario
-Requiere Go 1.21 o superior.
+### 1. Prerrequisitos
+* Go 1.22+
+* Tailscale (Opcional, para modo de inferencia híbrida)
+* Ollama o vLLM (Para soberanía total del dato)
+
+### 2. Compilación del Sistema
+Para generar un binario de producción optimizado:
 ```bash
+# Limpiar dependencias y compilar
 go mod tidy
-go build -o promptc ./cmd/promptc/main.go
+go build -ldflags="-s -w" -o bin/promptc ./cmd/promptc/main.go
 ```
 
-### 2. Integración con Claude Desktop / Cursor
-Añade el servidor a tu configuración de MCP (`claude_desktop_config.json`):
+### 3. Integración con Claude Desktop / Cursor
+Añade el servidor a tu archivo de configuración `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "PROMPTC": {
-      "command": "/Users/TU_USUARIO/Desktop/GO/promptc/promptc",
+    "PROMPTC_CORE": {
+      "command": "/Users/cesar_rivas/promptc/bin/promptc",
+      "args": ["-mode", "hybrid"],
       "env": {
-        "PROMPTC_TU_MAQUINA": "TU_IP"
+        "PROMPTC_REMOTE_NODE": "100.x.y.z",
+        "PROMPTC_ENV": "production",
+        "PROMPTC_LOG_LEVEL": "debug"
       }
     }
   }
@@ -72,30 +77,42 @@ Añade el servidor a tu configuración de MCP (`claude_desktop_config.json`):
 
 ---
 
-## 🎮 Caso de Uso: Orquestación en Acción
+## 🎮 Caso de Uso: Orquestación Industrial
 
-Una vez configurado, puedes interactuar con **PROMPTC** de forma natural en tu chat de IA:
+Una vez activo, puedes delegar tareas complejas directamente desde tu IDE:
 
-**Usuario:** *"Usa la plantilla PROMPTC_BANCA_RIESGO y compílala para un agente que analice fraudes en transferencias Swift."*
+**Usuario**: *"Analiza este reporte de incidente en faena usando PROMPTC_MINERIA_BASE y genera el XML de cumplimiento para el regulador."*
 
-**PROMPTC Engine:**
-1.  Llamada a `get_template("PROMPTC_BANCA_RIESGO")` -> Extrae reglas de cumplimiento local.
-2.  Llamada a `optimize_prompt(...)` -> Cruza los datos hacia el nodo privado (Mac mini).
-3.  **Resultado:** Un prompt de sistema blindado, listo para producción.
-
----
-
-## 🏗️ Estructura del Proyecto
-
-* `cmd/promptc`: Servidor JSON-RPC 2.0 nativo (Stdio Bridge).
-* `pkg/sdk`: Orquestador de inferencia y lógica de compilación.
-* `pkg/core`: Contratos y modelos de dominio para la ingeniería de prompts.
-* `pkg/provider`: Implementaciones para Ollama (Local) y OpenRouter (Cloud fallback).
+**PROMPTC Workflow**:
+1.  **Intercept**: El servidor MCP recibe la solicitud localmente antes de que llegue a la nube pública.
+2.  **Route**: Enruta el contexto por el túnel seguro al nodo de inferencia privado (Mac mini).
+3.  **Compile**: Inyecta las reglas de la plantilla industrial y valida el output idiomático.
+4.  **Deliver**: Devuelve una respuesta determinista y segura a tu editor como un System Prompt.
 
 ---
 
-## 📝 Licencia
-Este proyecto es Open Source bajo la licencia **MIT**.
+## 🏗️ Estructura del Proyecto (Clean Architecture)
+
+* `cmd/promptc`: Punto de entrada del Servidor JSON-RPC 2.0 (Stdio Bridge).
+* `pkg/sdk`: Orquestador de inferencia y lógica de compilación de prompts.
+* `pkg/core`: Definiciones de dominio, contratos y esquemas de validación.
+* `pkg/provider`: Adaptadores para Ollama (Local) y OpenRouter (Cloud fallback).
 
 ---
-**PROMPTC: Elevando la ingeniería de prompts al estándar de la ingeniería de software.** Desarrollado con ❤️ en Chile / La Serena por **Cesar Rivas**.
+
+## 📅 Roadmap v0.2.0
+
+- [x] Implementación Core MCP (Stdio).
+- [x] Integración nativa con Ollama local.
+- [ ] **PROMPTC Dashboard**: Visualización de observabilidad en tiempo real (Next.js + Go Fiber).
+- [ ] **Schema Enforcement**: Validación estricta de estructuras de salida mediante JSON Schema.
+- [ ] **Multi-node Load Balancing**: Soporte para clústeres de inferencia distribuida.
+
+---
+
+## 🤝 Contribuciones y Licencia
+
+Este es un proyecto Open Source nacido en Chile para fortalecer el desarrollo de IA soberana en la región. Las contribuciones son bienvenidas vía Pull Requests.
+
+**Licencia**: MIT | **Autor**: Cesar Rivas - Senior Backend Engineer & Cloud Architect.
+Desarrollado en La Serena, Chile.
