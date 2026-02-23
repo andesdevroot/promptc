@@ -1,0 +1,10 @@
+{
+  "inference_count": 3,
+  "inference_success": 3,
+  "inference_fail": 0,
+  "total_latency_ms": 180011,
+  "total_tokens": 644,
+  "gemini_call_count": 0,
+  "template_calls": {},
+  "saved_at": "2026-02-23T12:11:13.294447-03:00"
+}

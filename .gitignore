@@ -26,3 +26,7 @@ vendor/
 .promptc/
 
 
+CLAUDE.md
+bin/
+.env
+*.exe

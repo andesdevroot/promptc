@@ -1,0 +1,73 @@
+{"ts":"2026-02-22T15:02:40.382","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T15:02:41.103","type":"KERNEL","action":"BOOT","actor":"promptc-engine","result":"OK","detail":"PROMPTC v0.3.0 iniciado — nodo=100.90.6.101 templates=2 inferencias_previas=1"}
+{"ts":"2026-02-22T15:02:41.104","type":"MCP","action":"HANDSHAKE_INIT","actor":"claude-desktop","result":"OK","detail":"Protocolo MCP 2024-11-05 — negociación iniciada"}
+{"ts":"2026-02-22T15:02:41.106","type":"MCP","action":"HANDSHAKE_CONFIRMED","actor":"claude-desktop","result":"OK","detail":"Canal MCP establecido — herramientas disponibles"}
+{"ts":"2026-02-22T15:02:41.110","type":"MCP","action":"TOOLS_LIST_REQUESTED","actor":"claude-desktop","result":"OK","detail":"Enviando schema de 2 herramientas: get_template, optimize_prompt"}
+{"ts":"2026-02-22T15:03:32.866","type":"MCP","action":"TOOL_INVOKED","actor":"claude-desktop","resource":"get_template","result":"OK","detail":"Solicitud recibida vía MCP stdio"}
+{"ts":"2026-02-22T15:03:32.868","type":"TEMPLATE","action":"GET_NOT_FOUND","actor":"promptc-engine","resource":"list","result":"FAIL","detail":"Template no registrado en templates.json"}
+{"ts":"2026-02-22T15:05:42.441","type":"MCP","action":"TOOL_INVOKED","actor":"claude-desktop","resource":"optimize_prompt","result":"OK","detail":"Solicitud recibida vía MCP stdio"}
+{"ts":"2026-02-22T15:05:42.442","type":"INFERENCE","action":"PIPELINE_START","actor":"promptc-engine","resource":"mac-mini","result":"OK","detail":"role=\"Experto en productos crediticios y normativa bancaria chilena, con conocimiento en atención a clientes extranjeros\" constraints=0 variables=0"}
+{"ts":"2026-02-22T15:06:42.448","type":"INFERENCE","action":"PIPELINE_OK","actor":"mac-mini","resource":"optimize_prompt","result":"OK","latency_ms":60005,"detail":"tokens~149 soberanía=LOCAL"}
+{"ts":"2026-02-22T15:40:45.305","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T15:40:55.328","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T15:44:00.878","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T15:44:10.886","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T15:47:41.939","type":"KERNEL","action":"SHUTDOWN","actor":"promptc-engine","result":"OK","detail":"Señal recibida: terminated — flush de métricas iniciado"}
+{"ts":"2026-02-22T15:49:13.691","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T15:49:14.736","type":"KERNEL","action":"BOOT","actor":"promptc-engine","result":"OK","detail":"PROMPTC v0.3.0 iniciado — nodo=100.90.6.101 templates=2 inferencias_previas=2"}
+{"ts":"2026-02-22T15:49:14.736","type":"MCP","action":"HANDSHAKE_INIT","actor":"claude-desktop","result":"OK","detail":"Protocolo MCP 2024-11-05 — negociación iniciada"}
+{"ts":"2026-02-22T15:49:14.738","type":"MCP","action":"HANDSHAKE_CONFIRMED","actor":"claude-desktop","result":"OK","detail":"Canal MCP establecido — herramientas disponibles"}
+{"ts":"2026-02-22T15:49:14.740","type":"MCP","action":"TOOLS_LIST_REQUESTED","actor":"claude-desktop","result":"OK","detail":"Enviando schema de 2 herramientas: get_template, optimize_prompt"}
+{"ts":"2026-02-22T15:49:58.418","type":"SYSTEM","action":"HOT_RELOAD","actor":"dashboard-operator","result":"OK","detail":"2 templates recargados desde editor web"}
+{"ts":"2026-02-22T16:16:24.655","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T16:16:34.662","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T17:21:10.881","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T17:21:20.883","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T17:37:04.133","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T17:37:14.124","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T17:53:27.920","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T17:53:37.933","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T18:06:02.837","type":"KERNEL","action":"SHUTDOWN","actor":"promptc-engine","result":"OK","detail":"Señal recibida: terminated — flush de métricas iniciado"}
+{"ts":"2026-02-22T19:22:26.874","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T19:22:27.702","type":"KERNEL","action":"BOOT","actor":"promptc-engine","result":"OK","detail":"PROMPTC v0.3.0 iniciado — nodo=100.90.6.101 templates=3 inferencias_previas=2"}
+{"ts":"2026-02-22T19:22:27.703","type":"MCP","action":"HANDSHAKE_INIT","actor":"claude-desktop","result":"OK","detail":"Protocolo MCP 2024-11-05 — negociación iniciada"}
+{"ts":"2026-02-22T19:22:27.706","type":"MCP","action":"HANDSHAKE_CONFIRMED","actor":"claude-desktop","result":"OK","detail":"Canal MCP establecido — herramientas disponibles"}
+{"ts":"2026-02-22T19:22:27.708","type":"MCP","action":"TOOLS_LIST_REQUESTED","actor":"claude-desktop","result":"OK","detail":"Enviando schema de 2 herramientas: get_template, optimize_prompt"}
+{"ts":"2026-02-22T19:26:14.632","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T19:26:15.619","type":"KERNEL","action":"BOOT","actor":"promptc-engine","result":"OK","detail":"PROMPTC v0.3.0 iniciado — nodo=100.90.6.101 templates=3 inferencias_previas=2"}
+{"ts":"2026-02-22T19:26:15.619","type":"MCP","action":"HANDSHAKE_INIT","actor":"claude-desktop","result":"OK","detail":"Protocolo MCP 2024-11-05 — negociación iniciada"}
+{"ts":"2026-02-22T19:26:15.620","type":"MCP","action":"HANDSHAKE_CONFIRMED","actor":"claude-desktop","result":"OK","detail":"Canal MCP establecido — herramientas disponibles"}
+{"ts":"2026-02-22T19:26:15.621","type":"MCP","action":"TOOLS_LIST_REQUESTED","actor":"claude-desktop","result":"OK","detail":"Enviando schema de 2 herramientas: get_template, optimize_prompt"}
+{"ts":"2026-02-22T19:27:21.483","type":"MCP","action":"TOOL_INVOKED","actor":"claude-desktop","resource":"get_template","result":"OK","detail":"Solicitud recibida vía MCP stdio"}
+{"ts":"2026-02-22T19:27:21.484","type":"TEMPLATE","action":"GET_NOT_FOUND","actor":"promptc-engine","resource":"BANCA_RIESGO","result":"FAIL","detail":"Template no registrado en templates.json"}
+{"ts":"2026-02-22T19:27:30.993","type":"MCP","action":"TOOL_INVOKED","actor":"claude-desktop","resource":"optimize_prompt","result":"OK","detail":"Solicitud recibida vía MCP stdio"}
+{"ts":"2026-02-22T19:27:30.993","type":"INFERENCE","action":"PIPELINE_START","actor":"promptc-engine","resource":"mac-mini","result":"OK","detail":"role=\"Especialista en cumplimiento normativo bancario y gestión de riesgos para banca de personas en Chile\" constraints=6 variables=0"}
+{"ts":"2026-02-22T19:28:30.997","type":"INFERENCE","action":"PIPELINE_OK","actor":"mac-mini","resource":"optimize_prompt","result":"OK","latency_ms":60003,"detail":"tokens~289 soberanía=LOCAL"}
+{"ts":"2026-02-22T21:12:33.173","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T21:12:43.181","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-22T21:37:52.959","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-22T21:38:02.968","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T02:29:55.656","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T02:30:05.676","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T02:47:50.260","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T02:48:00.273","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T03:06:43.543","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T03:06:53.540","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T04:13:58.322","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T04:14:08.318","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T04:34:47.581","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T04:34:57.590","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T04:52:35.176","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T04:52:45.184","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T06:09:18.633","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T06:09:28.642","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T06:15:01.988","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T06:15:11.998","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T07:33:02.367","type":"KERNEL","action":"NODE_OFFLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"WARN","detail":"Nodo no responde — activando fallback Gemini"}
+{"ts":"2026-02-23T07:33:12.368","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T11:23:30.064","type":"KERNEL","action":"NODE_ONLINE","actor":"mac-mini","resource":"100.90.6.101:11434","result":"OK","detail":"Nodo Ollama respondió heartbeat — inferencia local disponible"}
+{"ts":"2026-02-23T11:23:30.943","type":"KERNEL","action":"BOOT","actor":"promptc-engine","result":"OK","detail":"PROMPTC v0.3.0 iniciado — nodo=100.90.6.101 templates=3 inferencias_previas=3"}
+{"ts":"2026-02-23T11:23:30.943","type":"MCP","action":"HANDSHAKE_INIT","actor":"claude-desktop","result":"OK","detail":"Protocolo MCP 2024-11-05 — negociación iniciada"}
+{"ts":"2026-02-23T11:23:31.030","type":"MCP","action":"HANDSHAKE_CONFIRMED","actor":"claude-desktop","result":"OK","detail":"Canal MCP establecido — herramientas disponibles"}
+{"ts":"2026-02-23T11:23:31.031","type":"MCP","action":"TOOLS_LIST_REQUESTED","actor":"claude-desktop","result":"OK","detail":"Enviando schema de 2 herramientas: get_template, optimize_prompt"}
+{"ts":"2026-02-23T12:11:13.291","type":"KERNEL","action":"SHUTDOWN","actor":"promptc-engine","result":"OK","detail":"Señal recibida: terminated — flush de métricas iniciado"}

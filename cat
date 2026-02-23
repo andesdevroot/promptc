@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "PROMPTC": {
+      "command": "/Users/cesarrivas/Desktop/GO/promptc/promptc",
+      "args": [],
+      "env": {
+        "PROMPTC_MACMINI_IP": "100.90.6.101",
+        "GEMINI_API_KEY": "AIzaSyACHD49UQ2ltt_PXmBLfRf4-U2MrRpMi6o"
+      }
+    }
+  },
+  "preferences": {
+    "sidebarMode": "chat",
+    "coworkScheduledTasksEnabled": false
+  }
+}
