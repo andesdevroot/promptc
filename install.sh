@@ -1,46 +1,108 @@
 #!/bin/bash
-set -e
+# ==============================================================================
+# PROMPTC COMMUNITY EDITION - UNIVERSAL AUTO INSTALLER (v0.3.0)
+# ==============================================================================
 
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-NC='\033[0m'
+set -e # Detener ante cualquier error
 
-echo -e "${CYAN}🚀 Iniciando la instalación de PromptC...${NC}"
+# Configuración de Origen
+REPO_URL="https://github.com/andesdevroot/promptc/releases/download/v0.3.0"
+PROMPTC_DIR="$HOME/.promptc"
 
-# 1. Detectar Sistema Operativo y Arquitectura
-OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-ARCH="$(uname -m)"
+echo "========================================================"
+echo " 🚀 INICIANDO INSTALACIÓN DE PROMPTC COMMUNITY EDITION "
+echo "========================================================"
+echo ""
 
-if [ "$ARCH" = "x86_64" ]; then
-    ARCH="amd64"
-elif [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then
-    ARCH="arm64"
+# 1. Validación de Sistema y Arquitectura
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+
+if [ "$ARCH" == "x86_64" ]; then
+    BINARY_ARCH="amd64"
+elif [ "$ARCH" == "arm64" ]; then
+    BINARY_ARCH="arm64"
 else
-    echo -e "${RED}❌ Arquitectura no soportada: $ARCH${NC}"
+    echo "❌ Arquitectura $ARCH no soportada actualmente."
     exit 1
 fi
 
-# 2. Configurar variables
-REPO="andesdevroot/promptc"
-VERSION="v0.1.0-alpha"
-BINARY_NAME="promptc-${OS}-${ARCH}"
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY_NAME}"
+BINARY_NAME="promptc-$OS-$BINARY_ARCH"
+DOWNLOAD_URL="$REPO_URL/$BINARY_NAME"
 
-# 3. Descargar usando un directorio temporal (Solución al error 56)
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT # Limpiar al terminar
+# 2. Solicitar GEMINI_API_KEY al usuario
+echo "Para usar PROMPTC necesitas tu llave de Google AI Studio."
+echo "Obtenla gratis en: https://aistudio.google.com/app/apikey"
+read -p "🔑 Ingresa tu GEMINI_API_KEY: " GEMINI_KEY
 
-echo -e "⬇️  Descargando binario para ${OS}-${ARCH}..."
-if ! curl -fsSL -L -o "$TMP_DIR/promptc" "$DOWNLOAD_URL"; then
-    echo -e "${RED}❌ Error al descargar el binario. Verifica la URL: $DOWNLOAD_URL${NC}"
+if [ -z "$GEMINI_KEY" ]; then
+    echo "❌ Error: La API Key es obligatoria."
     exit 1
 fi
 
-# 4. Instalación
-echo -e "📦 Instalando en /usr/local/bin (se requiere sudo)..."
-chmod +x "$TMP_DIR/promptc"
-sudo mv "$TMP_DIR/promptc" /usr/local/bin/promptc
+# 3. Preparación del Entorno Local
+echo "📂 Creando entorno en $PROMPTC_DIR..."
+mkdir -p "$PROMPTC_DIR"
 
-echo -e "${GREEN}✅ ¡PromptC instalado con éxito!${NC}"
-echo -e "Ejecuta ${CYAN}promptc version${NC} para verificar."
+# 4. Descarga del Binario Real desde GitHub
+echo "⚙️  Descargando motor PROMPTC ($BINARY_NAME)..."
+curl -L "$DOWNLOAD_URL" -o "$PROMPTC_DIR/promptc"
+chmod +x "$PROMPTC_DIR/promptc"
+
+# 5. Inicialización de Plantillas Base
+if [ ! -f "$PROMPTC_DIR/templates.json" ]; then
+    echo "📄 Inicializando plantillas industriales base..."
+    cat <<EOF > "$PROMPTC_DIR/templates.json"
+{
+  "PROMPTC_BANCA_RIESGO": {
+    "description": "Protocolo de mitigación de fraudes Swift.",
+    "content": "ROL: {{role}}\nCONTEXTO: {{context}}\nTAREA: {{task}}\nRESTRICCIONES: {{constraints}}\nPROTOCOLO: Analiza vectores de riesgo, evalúa controles, identifica brechas normativas CMF Chile."
+  },
+  "PROMPTC_MINERIA_BASE": {
+    "description": "Protocolo Sernageomin para drones.",
+    "content": "ROL: {{role}}\nCONTEXTO: {{context}}\nTAREA: {{task}}\nRESTRICCIONES: {{constraints}}\nPROTOCOLO: Aplica normativa Sernageomin DS132, evalúa riesgos operacionales en faena."
+  }
+}
+EOF
+fi
+
+# 6. Inyección en Claude Desktop vía Python (Seguridad Atómica)
+echo "🔗 Conectando PROMPTC con Claude Desktop..."
+
+python3 -c '
+import json, os, sys
+
+config_path = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
+promptc_dir = os.path.expanduser("~/.promptc")
+gemini_key = sys.argv[1]
+
+try:
+    with open(config_path, "r") as f:
+        data = json.load(f)
+except Exception:
+    data = {"mcpServers": {}}
+
+if "mcpServers" not in data:
+    data["mcpServers"] = {}
+
+data["mcpServers"]["promptc"] = {
+    "command": f"{promptc_dir}/promptc",
+    "args": ["-mode=community"],
+    "env": {
+        "GEMINI_API_KEY": gemini_key
+    }
+}
+
+os.makedirs(os.path.dirname(config_path), exist_ok=True)
+with open(config_path, "w") as f:
+    json.dump(data, f, indent=2)
+' "$GEMINI_KEY"
+
+echo ""
+echo "========================================================"
+echo " 🎉 ¡INSTALACIÓN COMPLETADA EXITOSAMENTE! "
+echo "========================================================"
+echo "👉 1. REINICIA CLAUDE DESKTOP (Cmd + Q)."
+echo "👉 2. Dile a Claude: 'Usa optimize_prompt de PROMPTC...'"
+echo "👉 3. Dashboard local: http://localhost:8080"
+echo "========================================================"
