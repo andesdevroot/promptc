@@ -1,108 +1,97 @@
 #!/bin/bash
-# ==============================================================================
-# PROMPTC COMMUNITY EDITION - UNIVERSAL AUTO INSTALLER (v0.3.0)
-# ==============================================================================
+set -e
 
-set -e # Detener ante cualquier error
+# --- UI & Branding ---
+CYAN='\033[1;36m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-# Configuración de Origen
-REPO_URL="https://github.com/andesdevroot/promptc/releases/download/v0.3.0"
-PROMPTC_DIR="$HOME/.promptc"
-
-echo "========================================================"
-echo " 🚀 INICIANDO INSTALACIÓN DE PROMPTC COMMUNITY EDITION "
-echo "========================================================"
+echo -e "${CYAN}"
+echo "    ____  ____  ____  __  ______  __________ "
+echo "   / __ \/ __ \/ __ \/  |/  / _ \/_  __/ __/ "
+echo "  / /_/ / /_/ / / / / /|_/ / /_/ // / / /    "
+echo " / ____/ _, _/ /_/ / /  / / ____// / / /___  "
+echo "/_/   /_/ |_|\____/_/  /_/_/    /_/  \____/  "
+echo -e "${NC}"
+echo "=> Iniciando instalación de PROMPTC v0.3.1 (Community Edition)..."
 echo ""
 
-# 1. Validación de Sistema y Arquitectura
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m)
-
-if [ "$ARCH" == "x86_64" ]; then
-    BINARY_ARCH="amd64"
-elif [ "$ARCH" == "arm64" ]; then
-    BINARY_ARCH="arm64"
-else
-    echo "❌ Arquitectura $ARCH no soportada actualmente."
+# --- 1. Verificación de Dependencias ---
+if ! command -v go &> /dev/null; then
+    echo -e "${RED}[FATAL] Go no está instalado.${NC} Descárgalo desde https://go.dev/dl/ e inténtalo de nuevo."
     exit 1
 fi
 
-BINARY_NAME="promptc-$OS-$BINARY_ARCH"
-DOWNLOAD_URL="$REPO_URL/$BINARY_NAME"
-
-# 2. Solicitar GEMINI_API_KEY al usuario
-echo "Para usar PROMPTC necesitas tu llave de Google AI Studio."
-echo "Obtenla gratis en: https://aistudio.google.com/app/apikey"
-read -p "🔑 Ingresa tu GEMINI_API_KEY: " GEMINI_KEY
-
-if [ -z "$GEMINI_KEY" ]; then
-    echo "❌ Error: La API Key es obligatoria."
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}[FATAL] Python3 no está instalado.${NC} Es necesario para configurar Claude."
     exit 1
 fi
 
-# 3. Preparación del Entorno Local
-echo "📂 Creando entorno en $PROMPTC_DIR..."
+# --- 2. Preparación de Entorno ---
+PROMPTC_DIR="$HOME/.promptc"
+echo "=> Creando directorio base en $PROMPTC_DIR..."
 mkdir -p "$PROMPTC_DIR"
 
-# 4. Descarga del Binario Real desde GitHub
-echo "⚙️  Descargando motor PROMPTC ($BINARY_NAME)..."
-curl -L "$DOWNLOAD_URL" -o "$PROMPTC_DIR/promptc"
-chmod +x "$PROMPTC_DIR/promptc"
+# --- 3. Obtención de la API Key (Lectura directa del TTY) ---
+echo -n "=> Pega tu GEMINI_API_KEY (Presiona Enter si prefieres configurarla luego): "
+read -r USER_GEMINI_KEY < /dev/tty || true
+export USER_GEMINI_KEY
 
-# 5. Inicialización de Plantillas Base
-if [ ! -f "$PROMPTC_DIR/templates.json" ]; then
-    echo "📄 Inicializando plantillas industriales base..."
-    cat <<EOF > "$PROMPTC_DIR/templates.json"
-{
-  "PROMPTC_BANCA_RIESGO": {
-    "description": "Protocolo de mitigación de fraudes Swift.",
-    "content": "ROL: {{role}}\nCONTEXTO: {{context}}\nTAREA: {{task}}\nRESTRICCIONES: {{constraints}}\nPROTOCOLO: Analiza vectores de riesgo, evalúa controles, identifica brechas normativas CMF Chile."
-  },
-  "PROMPTC_MINERIA_BASE": {
-    "description": "Protocolo Sernageomin para drones.",
-    "content": "ROL: {{role}}\nCONTEXTO: {{context}}\nTAREA: {{task}}\nRESTRICCIONES: {{constraints}}\nPROTOCOLO: Aplica normativa Sernageomin DS132, evalúa riesgos operacionales en faena."
-  }
-}
-EOF
-fi
+# --- 4. Descarga y Compilación ---
+echo "=> Descargando código fuente desde GitHub (rama master)..."
+TEMP_DIR=$(mktemp -d)
+git clone -q -b master https://github.com/andesdevroot/promptc.git "$TEMP_DIR"
 
-# 6. Inyección en Claude Desktop vía Python (Seguridad Atómica)
-echo "🔗 Conectando PROMPTC con Claude Desktop..."
+echo "=> Compilando binario estático optimizado..."
+cd "$TEMP_DIR"
+go build -ldflags="-s -w" -o "$PROMPTC_DIR/promptc" ./cmd/promptc/main.go
 
+# --- 5. Inyección de Configuración en Claude Desktop ---
+echo "=> Inyectando servidor MCP en Claude Desktop..."
+
+# Usamos comillas simples para proteger el script de Python de la expansión de Bash
 python3 -c '
-import json, os, sys
+import json, os
 
-config_path = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
-promptc_dir = os.path.expanduser("~/.promptc")
-gemini_key = sys.argv[1]
+path = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
+data = {"mcpServers": {}}
 
-try:
-    with open(config_path, "r") as f:
-        data = json.load(f)
-except Exception:
-    data = {"mcpServers": {}}
+if os.path.exists(path):
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"   [WARN] No se pudo leer config previa: {e}")
 
 if "mcpServers" not in data:
     data["mcpServers"] = {}
 
-data["mcpServers"]["promptc"] = {
-    "command": f"{promptc_dir}/promptc",
+api_key = os.environ.get("USER_GEMINI_KEY", "")
+env_vars = {}
+if api_key:
+    env_vars["GEMINI_API_KEY"] = api_key
+
+data["mcpServers"]["PROMPTC"] = {
+    "command": os.path.expanduser("~/.promptc/promptc"),
     "args": ["-mode=community"],
-    "env": {
-        "GEMINI_API_KEY": gemini_key
-    }
+    "env": env_vars
 }
 
-os.makedirs(os.path.dirname(config_path), exist_ok=True)
-with open(config_path, "w") as f:
+os.makedirs(os.path.dirname(path), exist_ok=True)
+
+with open(path, "w") as f:
     json.dump(data, f, indent=2)
-' "$GEMINI_KEY"
+'
+
+# --- 6. Limpieza y Cierre ---
+rm -rf "$TEMP_DIR"
 
 echo ""
-echo "========================================================"
-echo " 🎉 ¡INSTALACIÓN COMPLETADA EXITOSAMENTE! "
-echo "========================================================"
-echo "👉 1. REINICIA CLAUDE DESKTOP (Cmd + Q)."
-echo "👉 2. Dile a Claude: 'Usa optimize_prompt de PROMPTC...'"
-echo "👉 3. Dashboard local: http://localhost:8080"
-echo "========================================================"
+echo -e "${GREEN}[SUCCESS] ¡PROMPTC Community Edition instalado exitosamente!${NC}"
+echo "--------------------------------------------------------"
+echo " • Binario instalado en: $PROMPTC_DIR/promptc"
+echo " • Claude configurado (Modo: Community)"
+echo "--------------------------------------------------------"
+echo -e "${YELLOW}>> PASO FINAL:${NC} Reinicia Claude Desktop (Cmd + Q) para aplicar los cambios."
