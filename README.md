@@ -1,4 +1,4 @@
-# 🚀 PROMPTC: The Prompt Compiler (v0.1.0-alpha)
+# 🚀 PROMPTC: The Industrial Prompt Compiler
 
 ```text
     ____                            __  ______
@@ -9,110 +9,107 @@
                           /_/                 
 
    The Prompt Compiler for Engineering Excellence
-   v0.1.0-alpha • by Cesar Rivas
+   v0.3.1 • by Cesar Rivas
 ```
 
+![Version](https://img.shields.io/badge/version-v0.3.1-blue.svg)
+![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg?logo=go)
+![Architecture](https://img.shields.io/badge/Architecture-MCP_Dual--Tier-00ff41.svg)
+![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
 > **"Prompt Engineering is Software Engineering."**
-> PROMPTC es un compilador nativo desarrollado en Go, diseñado para resolver el vacío de soberanía y determinismo en la adopción de IA Generativa para industrias críticas en LATAM.
+
+**PROMPTC** es un compilador nativo y orquestador L7 desarrollado en Go. Resuelve el vacío de soberanía, latencia y determinismo en la adopción de IA Generativa, permitiendo a los desarrolladores y equipos corporativos inyectar contexto, resolver variables y aplicar restricciones de negocio estables antes de que el LLM procese la solicitud.
 
 ---
 
-## 🏗️ Visión de Arquitectura: Private-First AI
+## ⚡ Instalación Rápida (Community Edition)
 
-En sectores regulados como la **Minería (Sernageomin), Banca (CMF) y el Sector Legal**, la lógica de negocio es un activo crítico que no puede ser expuesto a nubes públicas. **PROMPTC** actúa como un **L7 Gateway para LLMs**, permitiendo que herramientas como Claude Desktop o Cursor consuman contextos privados sin que la data sensible abandone la infraestructura corporativa.
+¿Quieres probar PROMPTC en tu entorno local en menos de 60 segundos? Hemos diseñado un auto-instalador *Plug & Play* que configura el motor y lo conecta con tu **Claude Desktop** automáticamente.
 
-### Diferenciadores Core
+**Requisitos previos:**
+* macOS (M1/M2/M3 o Intel) o Linux.
+* Claude Desktop instalado.
+* Una [API Key de Google AI Studio](https://aistudio.google.com/app/apikey) (gratuita).
 
-1.  **Soberanía de Datos**: Orquestación de inferencia local mediante túneles **Tailscale** hacia nodos privados (Mac mini, Ollama, vLLM).
-2.  **Abstracción de Vendor**: Compila una vez, despliega en cualquier modelo. Control total sobre el flujo de tokens y el presupuesto de inferencia.
-3.  **Compilación Determinista**: Transforma lenguaje ambiguo en estructuras técnicas blindadas, eliminando el "Spanglish" y asegurando el cumplimiento de normativas regionales.
+Abre tu terminal y ejecuta:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/main/install.sh | bash
+```
+
+Una vez finalizado, **reinicia Claude Desktop** (Cmd + Q) y pídele:
+*"Usa la herramienta optimize_prompt de PROMPTC para crear un protocolo usando el template PROMPTC_MINERIA_BASE"*.
+
+---
+
+## 🎛️ Core Dashboard (Local Observability)
+
+PROMPTC incluye un panel de control local de grado industrial (`http://localhost:8080`) que te permite:
+- Monitorear el consumo de tokens y latencia en tiempo real.
+- Auditar el flujo de datos y decisiones de ruteo (*Audit Log Stream*).
+- **Hot-Reload de Templates:** Edita tus plantillas industriales en formato JSON y aplícalas en caliente sin reiniciar el servidor MCP ni Claude.
+
+---
+
+## 🏗️ Arquitectura: Private-First AI (Dual-Tier)
+
+En sectores regulados como la **Minería (Sernageomin), Banca (CMF) y el Sector Legal**, la lógica de negocio es un activo crítico que no puede ser expuesto a nubes públicas de forma descontrolada. PROMPTC actúa como un **L7 Gateway para LLMs**, adaptándose a tus requerimientos:
+
+### 1. Community Mode (Rápida Adopción)
+* **Orquestación:** Ejecuta el binario localmente de forma ultra-ligera.
+* **Inferencia:** Rutea la optimización hacia **Gemini 1.5 Pro** de forma transparente.
+* **Uso:** Ideal para startups, desarrolladores y flujos ágiles.
+
+### 2. Enterprise Mode (Air-Gapped / Soberanía Total)
+* **Orquestación:** Ejecuta el binario localmente interceptando el prompt.
+* **Inferencia:** Rutea estrictamente hacia nodos locales (ej. Mac Mini corriendo Ollama / Llama 3) vía redes privadas virtuales como **Tailscale** (`100.x.x.x`).
+* **Seguridad:** Cero telemetría externa. Los datos de la compañía nunca tocan la internet pública.
 
 ---
 
 ## ✨ Características Principales
 
-* **Servidor MCP Nativo**: Implementación completa del *Model Context Protocol* sobre JSON-RPC 2.0 para integración directa con el ecosistema Anthropic y Cursor.
-* **Binario Estático en Go**: Cero dependencias en tiempo de ejecución. Rendimiento de alto nivel con consumo mínimo de recursos en workstations y servidores de borde.
-* **Prompt-as-Code (PaC)**: Gestión de plantillas mediante componentes versionables y pre-certificados:
-    * `PROMPTC_MINERIA_BASE`: Protocolos EPP, seguridad de faena y normativa minera local.
-    * `PROMPTC_BANCA_RIESGO`: Alineado con normativas CMF y prevención de fraude (AML).
-    * `PROMPTC_LEGAL_CONTRATOS`: Revisión de cláusulas críticas y derecho corporativo.
-* **Motor Anti-Spanglish**: Validación semántica estricta que fuerza el uso de terminología técnica precisa en español nativo, eliminando alucinaciones culturales.
+* **Servidor MCP Nativo**: Implementación completa del *Model Context Protocol* sobre JSON-RPC 2.0. Integración transparente con Claude Desktop y Cursor.
+* **Binario Estático en Go**: Cero dependencias (Runtime-free). Rendimiento de alto nivel con consumo mínimo de recursos (RAM < 15MB).
+* **Prompt-as-Code (PaC)**: Gestión de plantillas mediante componentes versionables pre-certificados (`PROMPTC_MINERIA_BASE`, `PROMPTC_BANCA_RIESGO`).
+* **Compilación Determinista**: Transforma lenguaje ambiguo en estructuras Markdown blindadas (Role, Context, Task, Constraints) inyectando variables dinámicas (`{{variable}}`).
 
 ---
 
-## 🛠️ Instalación y Configuración
+## 🛠️ Herramientas MCP Expuestas
 
-### 1. Prerrequisitos
-* Go 1.22+
-* Tailscale (Opcional, para modo de inferencia híbrida)
-* Ollama o vLLM (Para soberanía total del dato)
+PROMPTC expone las siguientes funciones al agente de tu IDE/Chat:
 
-### 2. Compilación del Sistema
-Para generar un binario de producción optimizado:
+1. `get_template`: Extrae una plantilla industrial pre-aprobada desde tu almacén local (`~/.promptc/templates.json`).
+2. `optimize_prompt`: El motor central. Inyecta contexto, resuelve variables en tiempo de compilación y emite un prompt determinista listo para inferencia de alta precisión.
+
+---
+
+## 💻 Para Contribuidores (TDD & Build)
+
+PROMPTC se construye bajo una estricta política de **Test-Driven Development (TDD) y Cero Regresiones**. Si deseas compilar el código fuente o aportar heurísticas:
+
 ```bash
-# Limpiar dependencias y compilar
-go mod tidy
-go build -ldflags="-s -w" -o bin/promptc ./cmd/promptc/main.go
-```
+# 1. Clonar el repositorio
+git clone https://github.com/andesdevroot/promptc.git
+cd promptc
 
-### 3. Integración con Claude Desktop / Cursor
-Añade el servidor a tu archivo de configuración `claude_desktop_config.json`:
+# 2. Ejecutar la suite de tests (Obligatorio antes de compilar)
+go test -v ./...
 
-```json
-{
-  "mcpServers": {
-    "PROMPTC_CORE": {
-      "command": "/Users/cesar_rivas/promptc/bin/promptc",
-      "args": ["-mode", "hybrid"],
-      "env": {
-        "PROMPTC_REMOTE_NODE": "100.x.y.z",
-        "PROMPTC_ENV": "production",
-        "PROMPTC_LOG_LEVEL": "debug"
-      }
-    }
-  }
-}
+# 3. Compilar el motor optimizado
+go build -ldflags="-s -w" -o build/promptc ./cmd/promptc/main.go
 ```
 
 ---
 
-## 🎮 Caso de Uso: Orquestación Industrial
+## 🤝 Filosofía y Licencia
 
-Una vez activo, puedes delegar tareas complejas directamente desde tu IDE:
+Este es un proyecto Open Source diseñado para fortalecer el desarrollo de IA determinista y soberana en la región. Las contribuciones son bienvenidas vía Pull Requests, siempre que incluyan su respectiva cobertura de tests.
 
-**Usuario**: *"Analiza este reporte de incidente en faena usando PROMPTC_MINERIA_BASE y genera el XML de cumplimiento para el regulador."*
+**Licencia**: MIT  
+**Autor**: Cesar Rivas - Senior Software Engineer.  
+*Desarrollado en La Serena, Chile.* 🇨🇱
 
-**PROMPTC Workflow**:
-1.  **Intercept**: El servidor MCP recibe la solicitud localmente antes de que llegue a la nube pública.
-2.  **Route**: Enruta el contexto por el túnel seguro al nodo de inferencia privado (Mac mini).
-3.  **Compile**: Inyecta las reglas de la plantilla industrial y valida el output idiomático.
-4.  **Deliver**: Devuelve una respuesta determinista y segura a tu editor como un System Prompt.
-
----
-
-## 🏗️ Estructura del Proyecto (Clean Architecture)
-
-* `cmd/promptc`: Punto de entrada del Servidor JSON-RPC 2.0 (Stdio Bridge).
-* `pkg/sdk`: Orquestador de inferencia y lógica de compilación de prompts.
-* `pkg/core`: Definiciones de dominio, contratos y esquemas de validación.
-* `pkg/provider`: Adaptadores para Ollama (Local) y OpenRouter (Cloud fallback).
-
----
-
-## 📅 Roadmap v0.2.0
-
-- [x] Implementación Core MCP (Stdio).
-- [x] Integración nativa con Ollama local.
-- [ ] **PROMPTC Dashboard**: Visualización de observabilidad en tiempo real (Next.js + Go Fiber).
-- [ ] **Schema Enforcement**: Validación estricta de estructuras de salida mediante JSON Schema.
-- [ ] **Multi-node Load Balancing**: Soporte para clústeres de inferencia distribuida.
-
----
-
-## 🤝 Contribuciones y Licencia
-
-Este es un proyecto Open Source nacido en Chile para fortalecer el desarrollo de IA soberana en la región. Las contribuciones son bienvenidas vía Pull Requests.
-
-**Licencia**: MIT | **Autor**: Cesar Rivas - Senior Backend Engineer & Cloud Architect.
-Desarrollado en La Serena, Chile.
