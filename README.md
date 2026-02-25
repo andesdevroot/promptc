@@ -36,7 +36,7 @@
 Abre tu terminal y ejecuta:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/master/install.sh | bash
 ```
 
 Una vez finalizado, **reinicia Claude Desktop** (Cmd + Q) y pídele:
