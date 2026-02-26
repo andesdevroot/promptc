@@ -5,178 +5,108 @@ import (
 	"strings"
 
 	"github.com/andesdevroot/promptc/pkg/core"
+	"github.com/andesdevroot/promptc/pkg/security"
 )
 
 type CompilerEngine struct {
-	MinScoreThreshold int
+	masker *security.Masker
 }
 
 func New() *CompilerEngine {
 	return &CompilerEngine{
-		MinScoreThreshold: 85,
+		masker: security.NewMasker(),
 	}
 }
 
-// ResolveVariables sustituye todos los {{placeholders}} en el contenido
-// usando primero los campos core del Prompt, luego el mapa Variables.
-// Si un placeholder no tiene valor, lo marca como [MISSING:key] para
-// que el operador lo vea en el dashboard y en el audit.log.
-func (e *CompilerEngine) ResolveVariables(content string, p core.Prompt) string {
-	// 1. Campos core del struct — siempre disponibles
-	coreVars := map[string]string{
-		"role":    strings.TrimSpace(p.Role),
-		"context": strings.TrimSpace(p.Context),
-		"task":    strings.TrimSpace(p.Task),
-	}
-
-	// 2. Constraints como bloque de texto para el placeholder {{constraints}}
-	if len(p.Constraints) > 0 {
-		parts := make([]string, 0, len(p.Constraints))
-		for _, c := range p.Constraints {
-			if strings.TrimSpace(c) != "" {
-				parts = append(parts, "- "+strings.TrimSpace(c))
-			}
-		}
-		coreVars["constraints"] = strings.Join(parts, "\n")
-	} else {
-		coreVars["constraints"] = ""
-	}
-
-	// 3. Merge con Variables map — permite override y variables de negocio custom
-	merged := make(map[string]string)
-	for k, v := range coreVars {
-		merged[k] = v
-	}
-	for k, v := range p.Variables {
-		merged[k] = v
-	}
-
-	// 4. Resolución de placeholders
-	result := content
-	for key, value := range merged {
-		placeholder := "{{" + key + "}}"
-		result = strings.ReplaceAll(result, placeholder, value)
-	}
-
-	// 5. Detectar y marcar placeholders no resueltos
-	// Esto aparece en el audit log como [MISSING:nombre_variable]
-	// permitiendo al operador identificar qué variables faltan
-	for {
-		start := strings.Index(result, "{{")
-		if start == -1 {
-			break
-		}
-		end := strings.Index(result[start:], "}}")
-		if end == -1 {
-			break
-		}
-		placeholder := result[start : start+end+2]
-		key := result[start+2 : start+end]
-		result = strings.ReplaceAll(result, placeholder, "[MISSING:"+strings.TrimSpace(key)+"]")
-	}
-
-	return result
-}
-
-// Compile construye el prompt final resolviendo variables antes de
-// armar la estructura por secciones. El Task puede contener un template
-// completo con placeholders — ResolveVariables lo resuelve primero.
 func (e *CompilerEngine) Compile(p core.Prompt) (string, error) {
-	var sb strings.Builder
+	// 1. Sanitización de entrada (PII Masking)
+	p.Role, _ = e.masker.Mask(p.Role)
+	p.Context, _ = e.masker.Mask(p.Context)
+	p.Task, _ = e.masker.Mask(p.Task)
 
-	// Resolver el Task si contiene placeholders de template
-	resolvedTask := e.ResolveVariables(p.Task, p)
+	for k, v := range p.Variables {
+		p.Variables[k], _ = e.masker.Mask(v)
+	}
 
-	sb.WriteString(fmt.Sprintf("### ROLE\n%s\n\n", strings.TrimSpace(p.Role)))
-	sb.WriteString(fmt.Sprintf("### CONTEXT\n%s\n\n", strings.TrimSpace(p.Context)))
-	sb.WriteString(fmt.Sprintf("### TASK\n%s\n\n", resolvedTask))
+	// 2. Resolver Task
+	task := p.Task
+	if p.Role != "" {
+		task = strings.ReplaceAll(task, "{{role}}", p.Role)
+	}
+	if p.Context != "" {
+		task = strings.ReplaceAll(task, "{{context}}", p.Context)
+	}
+	if p.Variables != nil {
+		for k, v := range p.Variables {
+			task = strings.ReplaceAll(task, "{{"+k+"}}", v)
+		}
+	}
+
+	// 3. Construir Markdown
+	var blocks []string
+	if p.Role != "" {
+		blocks = append(blocks, "### ROLE\n"+p.Role)
+	}
+	if p.Context != "" {
+		blocks = append(blocks, "### CONTEXT\n"+p.Context)
+	}
+	blocks = append(blocks, "### TASK\n"+task)
 
 	if len(p.Constraints) > 0 {
-		sb.WriteString("### CONSTRAINTS\n")
-		for _, c := range p.Constraints {
-			if strings.TrimSpace(c) != "" {
-				sb.WriteString(fmt.Sprintf("- %s\n", strings.TrimSpace(c)))
+		var cb strings.Builder
+		cb.WriteString("### CONSTRAINTS\n")
+		for i, c := range p.Constraints {
+			maskedC, _ := e.masker.Mask(c)
+			cb.WriteString("- " + maskedC)
+			if i < len(p.Constraints)-1 {
+				cb.WriteString("\n")
 			}
 		}
-		sb.WriteString("\n")
+		blocks = append(blocks, cb.String())
 	}
 
-	// Variables de negocio adicionales expuestas al modelo como sección propia
-	// Esto permite al nodo de inferencia ver el contexto completo de variables
-	if len(p.Variables) > 0 {
-		sb.WriteString("### VARIABLES\n")
-		for k, v := range p.Variables {
-			sb.WriteString(fmt.Sprintf("- %s: %s\n", k, v))
-		}
-		sb.WriteString("\n")
-	}
-
-	return sb.String(), nil
+	return strings.Join(blocks, "\n\n"), nil
 }
 
 func (e *CompilerEngine) Analyze(p core.Prompt) core.Result {
-	score := 100
 	var issues []string
-	var suggestions []string
+	score := 0
 
-	// 1. Rigor del Rol
-	cleanRole := strings.TrimSpace(p.Role)
-	if len(cleanRole) < 25 {
-		score -= 25
-		issues = append(issues, "Identidad de agente débil.")
-		suggestions = append(suggestions, "En español, usa roles con contexto de industria (ej: 'Ingeniero de Minas experto en Seguridad' en lugar de 'Experto').")
+	// Análisis de PII (Nueva métrica de seguridad)
+	_, detected := e.masker.Mask(p.Task)
+	if len(detected) > 0 {
+		issues = append(issues, fmt.Sprintf("SEGURIDAD: Se detectaron datos sensibles (%s). Serán ofuscados.", strings.Join(detected, ", ")))
+		// No bajamos score, pero alertamos en los issues
 	}
 
-	// 2. Anti-Hallucination: subjuntivo
-	subjunctivePatterns := []string{"quisiera", "me gustaría", "tal vez", "podrías"}
-	cleanTask := strings.ToLower(p.Task)
-	for _, pattern := range subjunctivePatterns {
-		if strings.Contains(cleanTask, pattern) {
-			score -= 15
-			issues = append(issues, "Uso de lenguaje condicional o ambiguo.")
-			suggestions = append(suggestions, "Cambia el condicional por imperativos directos: 'Analiza', 'Genera', 'Calcula'.")
-			break
-		}
+	// Heurísticas de calidad (Pesos)
+	if len(strings.TrimSpace(p.Role)) >= 5 {
+		score += 20
+	} else {
+		issues = append(issues, "Falta ROL.")
+	}
+	if len(strings.TrimSpace(p.Context)) >= 10 {
+		score += 20
+	} else {
+		issues = append(issues, "Falta CONTEXTO.")
 	}
 
-	// 3. Negative Constraints — obligatorio para industrias críticas
-	hasNegative := false
-	keywords := []string{"no ", "evita", "nunca", "prohibido", "sin inventar", "excluye"}
-	for _, c := range p.Constraints {
-		lowC := strings.ToLower(c)
-		for _, kw := range keywords {
-			if strings.Contains(lowC, kw) {
-				hasNegative = true
-				break
-			}
-		}
-	}
-	if !hasNegative {
-		score -= 40
-		issues = append(issues, "Ausencia de Negative Constraints.")
-		suggestions = append(suggestions, "Añade: 'No utilices información fuera del contexto proporcionado' para blindar el prompt.")
+	taskContent := strings.TrimSpace(p.Task)
+	if len(taskContent) >= 50 {
+		score += 40
+	} else {
+		issues = append(issues, "TAREA débil.")
 	}
 
-	// 4. Penalizar placeholders sin resolver en el Task
-	// Si llegan {{variables}} sin resolver al Analyze, significa que
-	// el operador no proveyó el mapa Variables antes de compilar
-	if strings.Contains(p.Task, "{{") && strings.Contains(p.Task, "}}") {
-		score -= 20
-		issues = append(issues, "El Task contiene placeholders sin resolver.")
-		suggestions = append(suggestions, "Provee el mapa Variables con los valores correspondientes antes de compilar.")
+	if len(p.Constraints) >= 2 {
+		score += 20
+	} else {
+		issues = append(issues, "Sin RESTRICCIONES.")
 	}
 
 	return core.Result{
-		Score:       e.clamp(score),
-		IsReliable:  score >= e.MinScoreThreshold,
-		Issues:      issues,
-		Suggestions: suggestions,
+		IsReliable: score >= 75,
+		Score:      score,
+		Issues:     issues,
 	}
-}
-
-func (e *CompilerEngine) clamp(score int) int {
-	if score < 0 {
-		return 0
-	}
-	return score
 }

@@ -12,58 +12,72 @@ import (
 	"github.com/andesdevroot/promptc/pkg/core"
 )
 
+// OllamaProvider implementa la interfaz Optimizer para nodos locales.
 type OllamaProvider struct {
 	BaseURL string
 	Model   string
 	Client  *http.Client
 }
 
-func NewOllamaProvider(ip string) *OllamaProvider {
+// OllamaRequest es la estructura para el endpoint /api/generate
+type OllamaRequest struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+	Stream bool   `json:"stream"`
+}
+
+// OllamaResponse es la respuesta simplificada del servidor
+type OllamaResponse struct {
+	Response string `json:"response"`
+}
+
+// NewOllamaProvider inicializa el nodo de inferencia privada.
+// Se espera que remoteIP sea la IP de Tailscale de tu Mac Mini.
+func NewOllamaProvider(remoteIP string) *OllamaProvider {
 	return &OllamaProvider{
-		BaseURL: fmt.Sprintf("http://%s:11434/api/generate", ip),
-		Model:   "llama3",
+		BaseURL: fmt.Sprintf("http://%s:11434", remoteIP),
+		Model:   "llama3", // O el modelo que tengas corriendo (mistral, phi3, etc)
 		Client: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 10 * time.Second, // Timeout corto para asegurar fallback rápido
 		},
 	}
 }
 
-func (o *OllamaProvider) Name() string { return "Ollama Remote Node (Mac mini)" }
+func (o *OllamaProvider) Name() string {
+	return "Ollama Enterprise Node (Private)"
+}
 
 func (o *OllamaProvider) Optimize(ctx context.Context, p core.Prompt, issues []string) (string, error) {
-	// Definimos el comportamiento esperado con un ejemplo claro (Few-Shot)
-	// Esto obliga al modelo a seguir el patrón de idioma y formato.
-	instruction := fmt.Sprintf(`Eres un Compilador de Prompts Técnico. Tu salida debe ser exclusivamente el prompt final optimizado.
+	// Construimos el Meta-Prompt idéntico al de Gemini para consistencia industrial
+	var sb strings.Builder
+	sb.WriteString("### SYSTEM INSTRUCTION\n")
+	sb.WriteString("Eres un experto en Ingeniería de Prompts Industriales. Tu misión es corregir los ISSUES del prompt.\n\n")
 
-### REGLAS DE ORO:
-1. IDIOMA: Escribe TODO en ESPAÑOL DE CHILE/TÉCNICO.
-2. PROHIBICIÓN: No hables con el usuario. No digas "Aquí está tu prompt". No uses inglés.
-3. FORMATO: Devuelve un System Prompt estructurado.
-
-### EJEMPLO DE COMPILACIÓN:
-INPUT: {Role: "Dev", Context: "Web", Task: "Fix bug"}
-OUTPUT: Actúa como un Desarrollador Senior. Tu contexto es un entorno web moderno. Tu tarea es identificar y corregir errores de lógica de forma eficiente.
-
-### TAREA REAL A COMPILAR:
-ROL: %s
-CONTEXTO: %s
-TAREA: %s
-ERRORES A CORREGIR: %s
-
-OUTPUT OPTIMIZADO EN ESPAÑOL:`, 
-		p.Role, p.Context, p.Task, strings.Join(issues, ", "))
-
-	payload := map[string]interface{}{
-		"model":  o.Model,
-		"prompt": instruction,
-		"stream": false,
-		"options": map[string]interface{}{
-			"temperature": 0.3, // Bajamos la temperatura para que sea más determinista y menos "creativo" (evita alucinaciones de idioma)
-		},
+	sb.WriteString("ISSUES DETECTADOS:\n")
+	for _, issue := range issues {
+		sb.WriteString("- " + issue + "\n")
 	}
 
-	jsonData, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, "POST", o.BaseURL, bytes.NewBuffer(jsonData))
+	sb.WriteString("\nFORMATO DE SALIDA:\n")
+	sb.WriteString("Solo entrega el prompt final estructurado en Markdown (ROLE, CONTEXT, TASK, CONSTRAINTS).\n\n")
+
+	sb.WriteString("ENTRADA CRUDA:\n")
+	sb.WriteString(fmt.Sprintf("Rol: %s | Contexto: %s | Tarea: %s\n", p.Role, p.Context, p.Task))
+
+	// Preparamos el payload JSON
+	reqBody := OllamaRequest{
+		Model:  o.Model,
+		Prompt: sb.String(),
+		Stream: false,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("error marshaling ollama request: %w", err)
+	}
+
+	// Ejecutamos la llamada HTTP al nodo local
+	req, err := http.NewRequestWithContext(ctx, "POST", o.BaseURL+"/api/generate", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
@@ -71,21 +85,18 @@ OUTPUT OPTIMIZADO EN ESPAÑOL:`,
 
 	resp, err := o.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("error en enlace Tailscale: %w", err)
+		return "", fmt.Errorf("nodo Ollama inaccesible: %w", err)
 	}
 	defer resp.Body.Close()
 
-	var result struct {
-		Response string `json:"response"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("ollama retorno status: %d", resp.StatusCode)
 	}
 
-	// Limpieza final por si el modelo ignora las instrucciones de no hablar
-	finalPrompt := strings.TrimSpace(result.Response)
-	finalPrompt = strings.TrimPrefix(finalPrompt, "Aquí está el prompt optimizado:")
-	finalPrompt = strings.TrimPrefix(finalPrompt, "Optimized Prompt:")
+	var ollamaResp OllamaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
+		return "", fmt.Errorf("error decoding ollama response: %w", err)
+	}
 
-	return finalPrompt, nil
+	return ollamaResp.Response, nil
 }

@@ -1,32 +1,49 @@
-# Binarios
-bin/
-promptc
+# ====================================================================
+# PROMPTC - INDUSTRIAL SPEC
+# ====================================================================
+
+# --- [ BINARIOS & ARTEFACTOS ] ---
+# Ignora ejecutables compilados en cualquier nivel
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Dependencias
-vendor/
-
-# IDEs y SO
-.idea/
-.vscode/
-.DS_Store
-
-# Test coverage
+*.test
 *.out
 
-# Solo ignorar los ejecutables en la raíz
+# Ignora los binarios específicos del proyecto
 /promptc
 /promptc-*
+build/
+bin/
 
-# Ignorar configuración local
+# --- [ CÓDIGO FUENTE PROTEGIDO ] ---
+# Nos aseguramos de que NUNCA ignore el código fuente en cmd/
+!/cmd/promptc/*.go
+!/build.sh
+
+# --- [ LOGS & OBSERVABILIDAD ] ---
+# Datos generados en runtime que no pertenecen al repo
+*.log
+audit.log
+metrics.json
 .promptc/
 
+# --- [ DEPENDENCIAS ] ---
+# En Go, usualmente no subimos el vendor a menos que sea política interna
+vendor/
 
-CLAUDE.md
-bin/
+# --- [ SEGURIDAD & ENTORNO ] ---
 .env
-*.exe
+.env.*
+# CLAUDE.md se queda si es tu guía local, si quieres compartirla bórrala de aquí
+CLAUDE.md
+
+# --- [ IDE & SISTEMA OPERATIVO ] ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+

@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -19,10 +21,27 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// --- INFRAESTRUCTURA ---
-const configPath = "/Users/cesarrivas/Desktop/GO/promptc/templates.json"
-const metricsPath = "/Users/cesarrivas/Desktop/GO/promptc/metrics.json"
-const auditPath = "/Users/cesarrivas/Desktop/GO/promptc/audit.log"
+// --- INFRAESTRUCTURA DINÁMICA ---
+var (
+	configPath  string
+	metricsPath string
+	auditPath   string
+)
+
+func init() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[FATAL] Error obteniendo directorio home: %v\n", err)
+		home = "."
+	}
+	baseDir := filepath.Join(home, ".promptc")
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "[FATAL] Error creando directorio %s: %v\n", baseDir, err)
+	}
+	configPath = filepath.Join(baseDir, "templates.json")
+	metricsPath = filepath.Join(baseDir, "metrics.json")
+	auditPath = filepath.Join(baseDir, "audit.log")
+}
 
 // --- TIPOS JSON-RPC ---
 type JSONRPCMessage struct {
@@ -45,25 +64,19 @@ type Template struct {
 }
 
 // --- SISTEMA DE AUDITORÍA ---
-// AuditEvent representa un evento estructurado de auditoría.
-// Cada evento tiene tipo semántico, actor, recurso y resultado.
 type AuditEvent struct {
 	Timestamp string `json:"ts"`
-	Type      string `json:"type"` // KERNEL | MCP | TEMPLATE | INFERENCE | POLICY | SYSTEM
+	Type      string `json:"type"`
 	Action    string `json:"action"`
-	Actor     string `json:"actor"` // claude-desktop | promptc-engine | mac-mini | gemini
+	Actor     string `json:"actor"`
 	Resource  string `json:"resource,omitempty"`
-	Result    string `json:"result"` // OK | FAIL | WARN
+	Result    string `json:"result"`
 	LatencyMs int64  `json:"latency_ms,omitempty"`
 	Detail    string `json:"detail,omitempty"`
 }
 
-// auditLog escribe el evento al archivo de auditoría Y al stream del dashboard.
-// El archivo es append-only — nunca se trunca, es el registro regulatorio.
 func auditLog(evt AuditEvent) {
 	evt.Timestamp = time.Now().Format("2006-01-02T15:04:05.000")
-
-	// Formato legible para el dashboard stream
 	line := fmt.Sprintf("[%s] %-10s %-18s actor=%-16s",
 		time.Now().Format("15:04:05.000"),
 		evt.Type,
@@ -81,18 +94,14 @@ func auditLog(evt AuditEvent) {
 		line += fmt.Sprintf(" | %s", evt.Detail)
 	}
 
-	// 1. Al dashboard WebSocket
 	hub.Lock()
 	hub.Logs = append(hub.Logs, line)
 	for c := range hub.Clients {
 		_ = c.WriteMessage(websocket.TextMessage, []byte(line))
 	}
 	hub.Unlock()
-
-	// 2. A stderr (visible en mcp.log de Claude Desktop)
 	fmt.Fprintf(os.Stderr, "%s\n", line)
 
-	// 3. Al archivo de auditoría append-only (registro regulatorio)
 	f, err := os.OpenFile(auditPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
 		jsonLine, _ := json.Marshal(evt)
@@ -101,8 +110,6 @@ func auditLog(evt AuditEvent) {
 	}
 }
 
-// addLog mantiene compatibilidad con logs de sistema genéricos
-// que no son eventos de auditoría (WS connect, hot-reload, etc.)
 func addLog(msg string) {
 	entry := fmt.Sprintf("[%s] SYSTEM     %-18s actor=promptc-engine    result=INFO | %s",
 		time.Now().Format("15:04:05.000"),
@@ -147,6 +154,7 @@ type Metrics struct {
 	TotalTokens      int64
 	GeminiCallCount  int64
 	TemplateCalls    map[string]int64
+	CurrentMode      string
 }
 
 var metrics = &Metrics{
@@ -156,7 +164,7 @@ var metrics = &Metrics{
 func loadMetrics() {
 	data, err := os.ReadFile(metricsPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[METRICS] No hay estado previo, arrancando limpio\n")
+		fmt.Fprintf(os.Stderr, "[METRICS] No hay estado previo en %s, arrancando limpio\n", metricsPath)
 		return
 	}
 	var snap MetricsSnapshot
@@ -175,8 +183,6 @@ func loadMetrics() {
 		metrics.TemplateCalls = snap.TemplateCalls
 	}
 	metrics.Unlock()
-	fmt.Fprintf(os.Stderr, "[METRICS] Estado restaurado desde disco (guardado: %s)\n",
-		snap.SavedAt.Format("2006-01-02 15:04:05"))
 }
 
 func saveMetrics() {
@@ -198,19 +204,13 @@ func saveMetrics() {
 
 	data, err := json.MarshalIndent(snap, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[METRICS] Error serializando métricas: %v\n", err)
 		return
 	}
 	tmpPath := metricsPath + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "[METRICS] Error escribiendo métricas: %v\n", err)
 		return
 	}
-	if err := os.Rename(tmpPath, metricsPath); err != nil {
-		fmt.Fprintf(os.Stderr, "[METRICS] Error en rename atómico: %v\n", err)
-		return
-	}
-	fmt.Fprintf(os.Stderr, "[METRICS] Estado persistido en disco\n")
+	os.Rename(tmpPath, metricsPath)
 }
 
 func startMetricsPersistence() {
@@ -285,9 +285,11 @@ func metricsSnapshotAPI() map[string]interface{} {
 	}
 	nodeOnline := metrics.NodeOnline
 	lastHeartbeat := metrics.LastHeartbeat.Format("15:04:05")
+	currentMode := metrics.CurrentMode
 	metrics.Unlock()
 
 	return map[string]interface{}{
+		"mode":             currentMode,
 		"node_online":      nodeOnline,
 		"last_heartbeat":   lastHeartbeat,
 		"inference_count":  count,
@@ -302,6 +304,7 @@ func metricsSnapshotAPI() map[string]interface{} {
 		"mem_sys_mb":       float64(memStats.Sys) / 1024 / 1024,
 		"goroutines":       runtime.NumGoroutine(),
 		"template_ranking": templateRanking,
+		"uptime_since":     startTime.Format(time.RFC3339),
 	}
 }
 
@@ -340,7 +343,7 @@ func startHeartbeat(remoteIP string) {
 						Actor:    "mac-mini",
 						Resource: remoteIP + ":11434",
 						Result:   "OK",
-						Detail:   "Nodo Ollama respondió heartbeat — inferencia local disponible",
+						Detail:   "Nodo Ollama respondió heartbeat",
 					})
 				}
 			} else {
@@ -363,398 +366,124 @@ func startHeartbeat(remoteIP string) {
 	}()
 }
 
-// --- DASHBOARD HTML ---
+// --- DASHBOARD HTML (NUEVO DISEÑO v0.3.1) ---
 const dashboardHTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>PROMPTC // CONTROL_PANEL</title>
+    <title>PROMPTC // CORE_DASHBOARD</title>
     <style>
+        :root { --bg: #0a0a0b; --green: #00ff41; --text: #e0e0e0; --orange: #ff9f1c; --blue: #00d4ff; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background: #000;
-            color: #00ff41;
-            font-family: 'Courier New', monospace;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .header {
-            padding: 14px 20px;
-            border-bottom: 1px solid #00ff41;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-        }
-        .header h1 { font-size: 1.1em; letter-spacing: 3px; text-shadow: 0 0 10px #00ff41; }
-        .blink { animation: blinker 1s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
-        .metrics-row {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-            padding: 10px;
-            flex-shrink: 0;
-        }
-        .metric-card {
-            border: 1px solid #00ff41;
-            padding: 10px 12px;
-            background: #050505;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .metric-label { font-size: 0.6em; color: #00aa2a; letter-spacing: 2px; text-transform: uppercase; }
-        .metric-value { font-size: 1.3em; font-weight: bold; text-shadow: 0 0 8px #00ff41; }
-        .metric-sub { font-size: 0.65em; color: #008820; }
-        .online  { color: #00ff41; }
-        .offline { color: #ff4141; }
-        .warn    { color: #ffaa00; }
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 10px;
-            padding: 0 10px 10px 10px;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-        .left-col {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow: hidden;
-            min-height: 0;
-        }
-        .log-panel {
-            border: 1px solid #00ff41;
-            background: #050505;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: inset 0 0 12px #00ff4122;
-            flex: 1 1 0;
-            min-height: 0;
-            overflow: hidden;
-        }
-        .log-panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #003311;
-            padding-bottom: 6px;
-            flex-shrink: 0;
-        }
-        .log-panel-header h3 {
-            font-size: 0.65em;
-            letter-spacing: 2px;
-            color: #00aa2a;
-        }
-        .filter-row {
-            display: flex;
-            gap: 6px;
-        }
-        .filter-btn {
-            font-size: 0.55em;
-            padding: 2px 7px;
-            border: 1px solid #00ff41;
-            background: transparent;
-            color: #00ff41;
-            cursor: pointer;
-            font-family: inherit;
-            letter-spacing: 1px;
-            transition: 0.15s;
-        }
-        .filter-btn.active { background: #00ff41; color: #000; }
-        .filter-btn:hover { background: #00ff4133; }
-        .log-entries { overflow-y: auto; flex-grow: 1; }
-
-        /* Colores por tipo de evento de auditoría */
-        .entry { font-size: 0.72em; margin-bottom: 3px; white-space: pre-wrap; line-height: 1.6; }
-        .entry.KERNEL    { color: #00ff41; }
-        .entry.MCP       { color: #00ccff; }
-        .entry.TEMPLATE  { color: #ffcc00; }
-        .entry.INFERENCE { color: #ff9900; }
-        .entry.POLICY    { color: #ff4444; }
-        .entry.SYSTEM    { color: #556655; }
-        .entry.hidden    { display: none; }
-
-        .ranking-panel {
-            border: 1px solid #00ff41;
-            background: #050505;
-            padding: 12px;
-            overflow-y: auto;
-            flex-shrink: 0;
-            max-height: 200px;
-            box-shadow: inset 0 0 12px #00ff4122;
-        }
-        .ranking-panel h3 {
-            font-size: 0.65em;
-            letter-spacing: 2px;
-            color: #00aa2a;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #003311;
-            padding-bottom: 6px;
-        }
-        .rank-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 0;
-            border-bottom: 1px solid #001a00;
-            font-size: 0.75em;
-        }
-        .rank-item-left { display: flex; flex-direction: column; flex-grow: 1; margin-right: 12px; }
-        .rank-bar {
-            height: 4px;
-            background: #00ff41;
-            margin-top: 4px;
-            transition: width 0.5s;
-            box-shadow: 0 0 6px #00ff41;
-        }
-        .editor-panel {
-            border: 1px solid #00ff41;
-            background: #050505;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-shadow: inset 0 0 12px #00ff4122;
-            overflow: hidden;
-        }
-        .editor-panel h3 {
-            font-size: 0.65em;
-            letter-spacing: 2px;
-            color: #00aa2a;
-            border-bottom: 1px solid #003311;
-            padding-bottom: 6px;
-            flex-shrink: 0;
-        }
-        textarea {
-            background: #000;
-            color: #00ff41;
-            border: 1px solid #003311;
-            flex-grow: 1;
-            padding: 10px;
-            font-family: inherit;
-            resize: none;
-            outline: none;
-            font-size: 0.75em;
-            line-height: 1.5;
-            min-height: 0;
-        }
-        button {
-            background: #00ff41;
-            color: #000;
-            border: none;
-            padding: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            font-family: inherit;
-            letter-spacing: 2px;
-            font-size: 0.8em;
-            transition: 0.15s;
-            flex-shrink: 0;
-        }
-        button:hover { background: #00cc33; box-shadow: 0 0 15px #00ff41; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #00ff41; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .top-bar { padding: 15px 25px; border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; background: #0f0f11; }
+        .logo { font-family: monospace; font-weight: bold; font-size: 1.2rem; color: var(--green); letter-spacing: 2px; }
+        .mode-badge { padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .community { background: var(--blue); color: #000; }
+        .enterprise { background: var(--green); color: #000; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: #222; border-bottom: 1px solid #222; flex-shrink: 0; }
+        .metric-item { background: #0f0f11; padding: 15px 20px; }
+        .metric-label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .metric-val { font-size: 1.1rem; font-family: monospace; font-weight: 600; color: var(--text); }
+        .main { display: grid; grid-template-columns: 1fr 450px; flex-grow: 1; overflow: hidden; gap: 1px; background: #222; }
+        .log-section { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
+        .section-header { padding: 10px 20px; background: #0f0f11; font-size: 0.7rem; color: #555; border-bottom: 1px solid #222; display: flex; justify-content: space-between; flex-shrink: 0; }
+        #logs { flex-grow: 1; overflow-y: auto; padding: 20px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.75rem; line-height: 1.6; color: #888; }
+        .entry-kernel { color: var(--green); }
+        .entry-mcp { color: var(--blue); }
+        .entry-inference { color: var(--orange); }
+        .side-panel { background: #0f0f11; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+        .editor-container { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
+        textarea { flex-grow: 1; background: #0a0a0b; color: var(--green); border: none; padding: 20px; font-family: monospace; outline: none; font-size: 0.8rem; resize: none; border-bottom: 1px solid #222; }
+        .btn-save { padding: 15px; background: var(--green); color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; flex-shrink: 0; }
+        .btn-save:hover { background: #00cc33; }
+        .install-box { padding: 15px; background: #151518; color: #888; font-size: 0.65rem; border-top: 1px solid #222; flex-shrink: 0; }
+        .install-code { background: #000; padding: 8px; border-radius: 4px; margin-top: 5px; color: var(--blue); cursor: pointer; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>PROMPTC // CONTROL_PANEL_V0.3.0 <span class="blink">_</span></h1>
-        <span id="clock" style="font-size:0.8em; color:#00aa2a;"></span>
+    <div class="top-bar">
+        <div class="logo">PROMPTC <span id="v">v0.3.1</span></div>
+        <div id="mode-badge" class="mode-badge">CARGANDO...</div>
     </div>
-
-    <div class="metrics-row">
-        <div class="metric-card">
-            <span class="metric-label">Node Heartbeat</span>
-            <span class="metric-value" id="m-node">--</span>
-            <span class="metric-sub" id="m-heartbeat">última señal: --</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">Memory Alloc</span>
-            <span class="metric-value" id="m-mem">-- MB</span>
-            <span class="metric-sub" id="m-goroutines">-- goroutines</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">Avg Latency</span>
-            <span class="metric-value" id="m-latency">-- ms</span>
-            <span class="metric-sub" id="m-inferences">0 inferencias</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">Token Throughput</span>
-            <span class="metric-value" id="m-tps">-- TPS</span>
-            <span class="metric-sub" id="m-tokens">0 tokens total</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">Success Ratio</span>
-            <span class="metric-value" id="m-ratio">--%</span>
-            <span class="metric-sub" id="m-succfail">ok:0 / err:0</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">Gemini Quota</span>
-            <span class="metric-value" id="m-gemini">0</span>
-            <span class="metric-sub">calls hoy</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">Templates Loaded</span>
-            <span class="metric-value" id="m-templates">0</span>
-            <span class="metric-sub">en templates.json</span>
-        </div>
+    <div class="metrics-grid">
+        <div class="metric-item"><div class="metric-label">Inferencias</div><div class="metric-val" id="m-inf">0</div></div>
+        <div class="metric-item"><div class="metric-label">Latencia Avg</div><div class="metric-val" id="m-lat">0 ms</div></div>
+        <div class="metric-item"><div class="metric-label">Tokens Total</div><div class="metric-val" id="m-tok">0</div></div>
+        <div class="metric-item"><div class="metric-label">Gemini Quota</div><div class="metric-val" id="m-gem">0</div></div>
+        <div class="metric-item"><div class="metric-label">Nodo Estado</div><div class="metric-val" id="m-node">--</div></div>
+        <div class="metric-item"><div class="metric-label">Goroutines</div><div class="metric-val" id="m-go">0</div></div>
     </div>
-
-    <div class="main-grid">
-        <div class="left-col">
-            <div class="log-panel">
-                <div class="log-panel-header">
-                    <h3>// AUDIT_LOG_STREAM</h3>
-                    <div class="filter-row">
-                        <button class="filter-btn active" onclick="setFilter('ALL')">ALL</button>
-                        <button class="filter-btn" onclick="setFilter('KERNEL')">KERNEL</button>
-                        <button class="filter-btn" onclick="setFilter('MCP')">MCP</button>
-                        <button class="filter-btn" onclick="setFilter('TEMPLATE')">TEMPLATE</button>
-                        <button class="filter-btn" onclick="setFilter('INFERENCE')">INFERENCE</button>
-                        <button class="filter-btn" onclick="setFilter('POLICY')">POLICY</button>
-                    </div>
-                </div>
-                <div class="log-entries" id="logs"></div>
+    <div class="main">
+        <div class="log-section">
+            <div class="section-header"><span>AUDIT_LOG_STREAM</span><span id="uptime">UPTIME: --</span></div>
+            <div id="logs"></div>
+        </div>
+        <div class="side-panel">
+            <div class="editor-container">
+                <div class="section-header">TEMPLATES_CONFIG (HOT-RELOAD)</div>
+                <textarea id="ed" placeholder="Cargando plantillas..."></textarea>
+                <button class="btn-save" onclick="save()">Sincronizar Cambios</button>
             </div>
-            <div class="ranking-panel" id="ranking-panel">
-                <h3>// TEMPLATE_POPULARITY</h3>
-                <div id="ranking"></div>
+            <div class="install-box">
+                COMPARTIR INSTALADOR COMUNIDAD:
+                <code class="install-code" onclick="copyInstall()">curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/main/install.sh | bash</code>
             </div>
         </div>
-        <div class="editor-panel">
-            <h3>// TEMPLATES_CONFIG_JSON</h3>
-            <textarea id="ed"></textarea>
-            <button onclick="save()">SAVE &amp; HOT-RELOAD</button>
-        </div>
     </div>
-
     <script>
-        // Reloj
-        setInterval(() => {
-            document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-CL');
-        }, 1000);
-
-        // Filtro activo
-        let activeFilter = 'ALL';
-
-        function setFilter(f) {
-            activeFilter = f;
-            document.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.toggle('active', b.textContent === f);
-            });
-            document.querySelectorAll('.entry').forEach(el => {
-                if (f === 'ALL') {
-                    el.classList.remove('hidden');
-                } else {
-                    el.classList.toggle('hidden', !el.classList.contains(f));
-                }
-            });
-        }
-
-        // Detectar tipo de evento del texto del log para colorear
-        function detectType(text) {
-            const types = ['KERNEL', 'MCP', 'TEMPLATE', 'INFERENCE', 'POLICY'];
-            for (const t of types) {
-                if (text.includes(t)) return t;
-            }
-            return 'SYSTEM';
-        }
-
-        // WebSocket logs
-        const logsEl = document.getElementById('logs');
         const ws = new WebSocket('ws://' + location.host + '/ws');
+        const logs = document.getElementById('logs');
         ws.onmessage = (e) => {
             const div = document.createElement('div');
-            const type = detectType(e.data);
-            div.className = 'entry ' + type;
-            if (activeFilter !== 'ALL' && type !== activeFilter) {
-                div.classList.add('hidden');
-            }
-            div.textContent = e.data;
-            logsEl.appendChild(div);
-            logsEl.scrollTop = logsEl.scrollHeight;
+            const txt = e.data;
+            if(txt.includes('KERNEL')) div.className = 'entry-kernel';
+            else if(txt.includes('MCP')) div.className = 'entry-mcp';
+            else if(txt.includes('INFERENCE')) div.className = 'entry-inference';
+            div.textContent = txt;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
         };
 
-        // Editor templates
-        fetch('/api/config')
-            .then(r => r.json())
-            .then(d => {
-                document.getElementById('ed').value = JSON.stringify(d, null, 2);
-                document.getElementById('m-templates').textContent = Object.keys(d).length;
-            });
+        function update() {
+            fetch('/api/metrics').then(r => r.json()).then(d => {
+                document.getElementById('m-inf').textContent = d.inference_count || 0;
+                document.getElementById('m-lat').textContent = Math.round(d.avg_latency_ms || 0) + ' ms';
+                document.getElementById('m-tok').textContent = d.total_tokens || 0;
+                document.getElementById('m-gem').textContent = d.gemini_calls || 0;
+                document.getElementById('m-go').textContent = d.goroutines || 0;
+                const node = document.getElementById('m-node');
+                node.textContent = d.node_online ? 'LOCAL_ONLINE' : 'CLOUD_ONLY';
+                node.style.color = d.node_online ? '#00ff41' : '#00d4ff';
 
+                const badge = document.getElementById('mode-badge');
+                if (d.mode) {
+                    badge.textContent = d.mode;
+                    badge.className = 'mode-badge ' + d.mode.toLowerCase();
+                }
+                if (d.uptime_since) {
+                    const start = new Date(d.uptime_since);
+                    const now = new Date();
+                    const diffMs = now - start;
+                    const hrs = Math.floor(diffMs / 3600000);
+                    const mins = Math.floor((diffMs % 3600000) / 60000);
+                    document.getElementById('uptime').textContent = 'UPTIME: ' + hrs + 'h ' + mins + 'm';
+                }
+            }).catch(e => console.error(e));
+        }
+        setInterval(update, 2000);
+        update();
+
+        fetch('/api/config').then(r => r.json()).then(d => document.getElementById('ed').value = JSON.stringify(d, null, 2));
         function save() {
-            fetch('/api/config', { method: 'POST', body: document.getElementById('ed').value })
-                .then(r => {
-                    if (!r.ok) alert('PERSISTENCE_ERROR');
-                    else fetch('/api/config').then(r => r.json()).then(d => {
-                        document.getElementById('m-templates').textContent = Object.keys(d).length;
-                    });
-                });
+            fetch('/api/config', { method: 'POST', body: document.getElementById('ed').value }).then(r => r.ok && alert('CONFIGURACIÓN ACTUALIZADA'));
         }
-
-        // Polling métricas
-        function updateMetrics() {
-            fetch('/api/metrics')
-                .then(r => r.json())
-                .then(d => {
-                    const nodeEl = document.getElementById('m-node');
-                    if (d.node_online) {
-                        nodeEl.textContent = 'ONLINE';
-                        nodeEl.className = 'metric-value online';
-                    } else {
-                        nodeEl.textContent = 'OFFLINE';
-                        nodeEl.className = 'metric-value offline';
-                    }
-                    document.getElementById('m-heartbeat').textContent = 'última señal: ' + d.last_heartbeat;
-                    document.getElementById('m-mem').textContent = d.mem_alloc_mb.toFixed(1) + ' MB';
-                    document.getElementById('m-goroutines').textContent = d.goroutines + ' goroutines';
-                    document.getElementById('m-latency').textContent = d.avg_latency_ms.toFixed(0) + ' ms';
-                    document.getElementById('m-inferences').textContent = d.inference_count + ' inferencias';
-                    document.getElementById('m-tps').textContent = d.token_throughput.toFixed(1) + ' TPS';
-                    document.getElementById('m-tokens').textContent = (d.total_tokens || 0) + ' tokens total';
-
-                    const ratioEl = document.getElementById('m-ratio');
-                    ratioEl.textContent = d.success_ratio.toFixed(1) + '%';
-                    if (d.success_ratio >= 90) ratioEl.className = 'metric-value online';
-                    else if (d.success_ratio >= 70) ratioEl.className = 'metric-value warn';
-                    else ratioEl.className = 'metric-value offline';
-                    document.getElementById('m-succfail').textContent = 'ok:' + d.success_count + ' / err:' + d.fail_count;
-
-                    const geminiEl = document.getElementById('m-gemini');
-                    geminiEl.textContent = d.gemini_calls;
-                    if (d.gemini_calls > 1400) geminiEl.className = 'metric-value offline';
-                    else if (d.gemini_calls > 1000) geminiEl.className = 'metric-value warn';
-                    else geminiEl.className = 'metric-value online';
-
-                    if (d.template_ranking && d.template_ranking.length > 0) {
-                        const rankingEl = document.getElementById('ranking');
-                        const sorted = d.template_ranking.sort((a, b) => b.calls - a.calls);
-                        const maxCalls = sorted[0].calls || 1;
-                        rankingEl.innerHTML = sorted.map(t => {
-                            const pct = (t.calls / maxCalls * 100).toFixed(0);
-                            return '<div class="rank-item">' +
-                                '<div class="rank-item-left">' +
-                                    '<div>' + t.name + '</div>' +
-                                    '<div class="rank-bar" style="width:' + pct + '%"></div>' +
-                                '</div>' +
-                                '<div style="color:#00aa2a">' + t.calls + '</div>' +
-                            '</div>';
-                        }).join('');
-                    }
-                });
+        function copyInstall() {
+            navigator.clipboard.writeText('curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/main/install.sh | bash');
+            alert('Comando copiado al portapapeles');
         }
-
-        updateMetrics();
-        setInterval(updateMetrics, 3000);
     </script>
 </body>
 </html>`
@@ -808,7 +537,7 @@ func startDashboard() {
 		metrics.Unlock()
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":          "ok",
-			"version":         "0.3.0",
+			"version":         "0.3.1",
 			"node_online":     nodeOnline,
 			"last_heartbeat":  lastHeartbeat,
 			"templates_count": tmplCount,
@@ -835,7 +564,7 @@ func startDashboard() {
 					Action: "HOT_RELOAD",
 					Actor:  "dashboard-operator",
 					Result: "OK",
-					Detail: fmt.Sprintf("%d templates recargados desde editor web", len(n)),
+					Detail: fmt.Sprintf("%d templates recargados", len(n)),
 				})
 			}
 		}
@@ -846,7 +575,6 @@ func startDashboard() {
 	}
 }
 
-// startTime para el health endpoint
 var startTime = time.Now()
 
 // --- TOOL HANDLERS ---
@@ -871,14 +599,12 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 		return
 	}
 
-	// Evento MCP: Claude Desktop invocó una herramienta
 	auditLog(AuditEvent{
 		Type:     "MCP",
 		Action:   "TOOL_INVOKED",
 		Actor:    "claude-desktop",
 		Resource: call.Name,
 		Result:   "OK",
-		Detail:   "Solicitud recibida vía MCP stdio",
 	})
 
 	switch call.Name {
@@ -887,18 +613,8 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 			Name string `json:"template_name"`
 		}
 		if err := json.Unmarshal(call.Arguments, &args); err != nil {
-			auditLog(AuditEvent{
-				Type:     "TEMPLATE",
-				Action:   "GET_ARGS_INVALID",
-				Actor:    "promptc-engine",
-				Resource: "get_template",
-				Result:   "FAIL",
-				Detail:   err.Error(),
-			})
 			sendResponse(req.ID, map[string]interface{}{
-				"content": []map[string]interface{}{
-					{"type": "text", "text": fmt.Sprintf("Error: argumentos inválidos: %v", err)},
-				},
+				"content": []map[string]interface{}{{"type": "text", "text": "Error: argumentos inválidos"}},
 			})
 			return
 		}
@@ -908,35 +624,15 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 		hub.Unlock()
 
 		if !ok {
-			auditLog(AuditEvent{
-				Type:     "TEMPLATE",
-				Action:   "GET_NOT_FOUND",
-				Actor:    "promptc-engine",
-				Resource: args.Name,
-				Result:   "FAIL",
-				Detail:   "Template no registrado en templates.json",
-			})
 			sendResponse(req.ID, map[string]interface{}{
-				"content": []map[string]interface{}{
-					{"type": "text", "text": fmt.Sprintf("Error: template '%s' no encontrado", args.Name)},
-				},
+				"content": []map[string]interface{}{{"type": "text", "text": "Error: template no encontrado"}},
 			})
 			return
 		}
 
 		recordTemplatCall(args.Name)
-		auditLog(AuditEvent{
-			Type:     "TEMPLATE",
-			Action:   "GET_SERVED",
-			Actor:    "promptc-engine",
-			Resource: args.Name,
-			Result:   "OK",
-			Detail:   fmt.Sprintf("desc=%q content_len=%d", tmpl.Description, len(tmpl.Content)),
-		})
 		sendResponse(req.ID, map[string]interface{}{
-			"content": []map[string]interface{}{
-				{"type": "text", "text": tmpl.Content},
-			},
+			"content": []map[string]interface{}{{"type": "text", "text": tmpl.Content}},
 		})
 
 	case "optimize_prompt":
@@ -949,24 +645,12 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 			Variables   map[string]string `json:"variables"`
 		}
 		if err := json.Unmarshal(call.Arguments, &args); err != nil {
-			auditLog(AuditEvent{
-				Type:     "INFERENCE",
-				Action:   "OPTIMIZE_ARGS_INVALID",
-				Actor:    "promptc-engine",
-				Resource: "optimize_prompt",
-				Result:   "FAIL",
-				Detail:   err.Error(),
-			})
-			recordInference(false, 0, 0, false)
 			sendResponse(req.ID, map[string]interface{}{
-				"content": []map[string]interface{}{
-					{"type": "text", "text": fmt.Sprintf("Error: argumentos inválidos: %v", err)},
-				},
+				"content": []map[string]interface{}{{"type": "text", "text": "Error: argumentos inválidos"}},
 			})
 			return
 		}
 
-		// Inyección de template como base del Task
 		task := args.Task
 		if args.Template != "" {
 			hub.Lock()
@@ -975,30 +659,13 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 			if ok {
 				task = tmpl.Content
 				recordTemplatCall(args.Template)
-				auditLog(AuditEvent{
-					Type:     "TEMPLATE",
-					Action:   "INJECT_AS_TASK",
-					Actor:    "promptc-engine",
-					Resource: args.Template,
-					Result:   "OK",
-					Detail:   fmt.Sprintf("Template inyectado como base — variables a resolver: %d", len(args.Variables)),
-				})
-			} else {
-				auditLog(AuditEvent{
-					Type:     "TEMPLATE",
-					Action:   "INJECT_NOT_FOUND",
-					Actor:    "promptc-engine",
-					Resource: args.Template,
-					Result:   "WARN",
-					Detail:   "Template no encontrado — usando Task directo del argumento",
-				})
 			}
 		}
 
-		// Enrutamiento al nodo de inferencia
 		metrics.Lock()
 		nodeOnline := metrics.NodeOnline
 		metrics.Unlock()
+
 		inferenceActor := "mac-mini"
 		if !nodeOnline {
 			inferenceActor = "gemini-cloud"
@@ -1010,7 +677,6 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 			Actor:    "promptc-engine",
 			Resource: inferenceActor,
 			Result:   "OK",
-			Detail:   fmt.Sprintf("role=%q constraints=%d variables=%d", args.Role, len(args.Constraints), len(args.Variables)),
 		})
 
 		start := time.Now()
@@ -1029,170 +695,101 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 		estimatedTokens := int64(len(res) / 4)
 
 		if err != nil {
-			auditLog(AuditEvent{
-				Type:      "INFERENCE",
-				Action:    "PIPELINE_FAIL",
-				Actor:     inferenceActor,
-				Resource:  "optimize_prompt",
-				Result:    "FAIL",
-				LatencyMs: latencyMs,
-				Detail:    err.Error(),
-			})
 			recordInference(false, latencyMs, 0, !nodeOnline)
 			sendResponse(req.ID, map[string]interface{}{
-				"content": []map[string]interface{}{
-					{"type": "text", "text": fmt.Sprintf("Error en pipeline de optimización: %v", err)},
-				},
+				"content": []map[string]interface{}{{"type": "text", "text": fmt.Sprintf("Error: %v", err)}},
 			})
 			return
 		}
 
-		auditLog(AuditEvent{
-			Type:      "INFERENCE",
-			Action:    "PIPELINE_OK",
-			Actor:     inferenceActor,
-			Resource:  "optimize_prompt",
-			Result:    "OK",
-			LatencyMs: latencyMs,
-			Detail: fmt.Sprintf("tokens~%d soberanía=%s", estimatedTokens, func() string {
-				if nodeOnline {
-					return "LOCAL"
-				}
-				return "CLOUD"
-			}()),
-		})
 		recordInference(true, latencyMs, estimatedTokens, !nodeOnline)
 		sendResponse(req.ID, map[string]interface{}{
-			"content": []map[string]interface{}{
-				{"type": "text", "text": res},
-			},
+			"content": []map[string]interface{}{{"type": "text", "text": res}},
 		})
 
 	default:
-		auditLog(AuditEvent{
-			Type:     "MCP",
-			Action:   "TOOL_NOT_FOUND",
-			Actor:    "claude-desktop",
-			Resource: call.Name,
-			Result:   "FAIL",
-			Detail:   "Herramienta no registrada en el servidor MCP",
-		})
 		sendResponse(req.ID, map[string]interface{}{
-			"content": []map[string]interface{}{
-				{"type": "text", "text": fmt.Sprintf("Error: herramienta '%s' no registrada", call.Name)},
-			},
+			"content": []map[string]interface{}{{"type": "text", "text": "Error: herramienta no registrada"}},
 		})
 	}
 }
 
 // --- MAIN ---
 func main() {
-	// 1. Restaurar métricas
+	modeFlag := flag.String("mode", "enterprise", "Modo de ejecución: 'community' (Viral/Cloud) o 'enterprise' (Soberano/Local)")
+	flag.Parse()
+
+	metrics.Lock()
+	metrics.CurrentMode = *modeFlag
+	metrics.Unlock()
+
 	loadMetrics()
 
-	// 2. Cargar templates
 	file, err := os.ReadFile(configPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] No se pudo leer templates.json: %v\n", err)
-	} else {
-		if err := json.Unmarshal(file, &hub.Templates); err != nil {
-			fmt.Fprintf(os.Stderr, "[WARN] templates.json malformado: %v\n", err)
-		} else {
-			fmt.Fprintf(os.Stderr, "[INFO] %d templates cargados\n", len(hub.Templates))
-		}
+	if err == nil {
+		json.Unmarshal(file, &hub.Templates)
 	}
 
-	// 3. Dashboard
 	go startDashboard()
 
-	// 4. Heartbeat
 	remoteIP := os.Getenv("PROMPTC_MACMINI_IP")
 	if remoteIP == "" {
 		remoteIP = "100.90.6.101"
 	}
-	startHeartbeat(remoteIP)
 
-	// 5. Persistencia periódica
-	startMetricsPersistence()
-
-	// 6. SDK
-	app, err := sdk.NewSDK(context.Background(), os.Getenv("GEMINI_API_KEY"), remoteIP)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[SDK_ERROR] %v — continuando sin optimizadores\n", err)
+	if *modeFlag == "enterprise" {
+		startHeartbeat(remoteIP)
+	} else {
+		metrics.Lock()
+		metrics.NodeOnline = false
+		metrics.LastHeartbeat = time.Now()
+		metrics.Unlock()
 	}
 
-	// 7. Graceful shutdown
+	startMetricsPersistence()
+
+	app, err := sdk.NewSDK(context.Background(), os.Getenv("GEMINI_API_KEY"), remoteIP)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[SDK_ERROR] %v\n", err)
+	}
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		sig := <-sigChan
-		auditLog(AuditEvent{
-			Type:   "KERNEL",
-			Action: "SHUTDOWN",
-			Actor:  "promptc-engine",
-			Result: "OK",
-			Detail: fmt.Sprintf("Señal recibida: %v — flush de métricas iniciado", sig),
-		})
+		<-sigChan
 		saveMetrics()
 		os.Exit(0)
 	}()
 
-	// 8. Evento de arranque del kernel
 	auditLog(AuditEvent{
 		Type:   "KERNEL",
 		Action: "BOOT",
 		Actor:  "promptc-engine",
 		Result: "OK",
-		Detail: fmt.Sprintf("PROMPTC v0.3.0 iniciado — nodo=%s templates=%d inferencias_previas=%d",
-			remoteIP,
-			len(hub.Templates),
-			atomic.LoadInt64(&metrics.InferenceCount),
-		),
+		Detail: fmt.Sprintf("PROMPTC v0.3.1 [%s] iniciado", *modeFlag),
 	})
 
-	// 9. Scanner MCP
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
 	for scanner.Scan() {
 		var req JSONRPCMessage
 		if err := json.Unmarshal(scanner.Bytes(), &req); err != nil {
-			fmt.Fprintf(os.Stderr, "[PARSE_ERROR] %v\n", err)
 			continue
 		}
 
 		switch req.Method {
 		case "initialize":
-			auditLog(AuditEvent{
-				Type:   "MCP",
-				Action: "HANDSHAKE_INIT",
-				Actor:  "claude-desktop",
-				Result: "OK",
-				Detail: "Protocolo MCP 2024-11-05 — negociación iniciada",
-			})
 			sendResponse(req.ID, map[string]interface{}{
 				"protocolVersion": "2024-11-05",
-				"serverInfo":      map[string]string{"name": "PROMPTC", "version": "0.3.0"},
+				"serverInfo":      map[string]string{"name": "PROMPTC", "version": "0.3.1"},
 				"capabilities":    map[string]interface{}{"tools": map[string]interface{}{}},
 			})
 
 		case "notifications/initialized":
-			auditLog(AuditEvent{
-				Type:   "MCP",
-				Action: "HANDSHAKE_CONFIRMED",
-				Actor:  "claude-desktop",
-				Result: "OK",
-				Detail: "Canal MCP establecido — herramientas disponibles",
-			})
+			// Handshake confirmado
 
 		case "tools/list":
-			auditLog(AuditEvent{
-				Type:   "MCP",
-				Action: "TOOLS_LIST_REQUESTED",
-				Actor:  "claude-desktop",
-				Result: "OK",
-				Detail: "Enviando schema de 2 herramientas: get_template, optimize_prompt",
-			})
 			sendResponse(req.ID, map[string]interface{}{
 				"tools": []map[string]interface{}{
 					{
@@ -1202,48 +799,23 @@ func main() {
 							"type":     "object",
 							"required": []string{"template_name"},
 							"properties": map[string]interface{}{
-								"template_name": map[string]string{
-									"type":        "string",
-									"description": "Nombre exacto de la plantilla registrada en templates.json",
-								},
+								"template_name": map[string]string{"type": "string"},
 							},
 						},
 					},
 					{
 						"name":        "optimize_prompt",
-						"description": "Compila y optimiza un prompt usando el Mac Mini vía Tailscale con fallback a Gemini. Acepta template_name para usar una plantilla como base con resolución automática de variables.",
+						"description": "Compila y optimiza un prompt. Acepta template_name.",
 						"inputSchema": map[string]interface{}{
 							"type":     "object",
 							"required": []string{"role", "context", "task"},
 							"properties": map[string]interface{}{
-								"role": map[string]string{
-									"type":        "string",
-									"description": "Rol del agente o sistema que ejecutará el prompt",
-								},
-								"context": map[string]string{
-									"type":        "string",
-									"description": "Contexto de negocio o técnico relevante para el prompt",
-								},
-								"task": map[string]string{
-									"type":        "string",
-									"description": "Tarea concreta. Ignorada si se provee template_name",
-								},
-								"template_name": map[string]string{
-									"type":        "string",
-									"description": "Nombre del template en templates.json para usar como base del Task con resolución automática de {{variables}}",
-								},
-								"constraints": map[string]interface{}{
-									"type":        "array",
-									"description": "Restricciones opcionales",
-									"items":       map[string]string{"type": "string"},
-								},
-								"variables": map[string]interface{}{
-									"type":        "object",
-									"description": "Variables de sustitución para resolver {{placeholders}} del template",
-									"additionalProperties": map[string]string{
-										"type": "string",
-									},
-								},
+								"role":          map[string]string{"type": "string"},
+								"context":       map[string]string{"type": "string"},
+								"task":          map[string]string{"type": "string"},
+								"template_name": map[string]string{"type": "string"},
+								"constraints":   map[string]interface{}{"type": "array", "items": map[string]string{"type": "string"}},
+								"variables":     map[string]interface{}{"type": "object", "additionalProperties": map[string]string{"type": "string"}},
 							},
 						},
 					},
@@ -1253,9 +825,5 @@ func main() {
 		case "tools/call":
 			handleToolCall(req, app)
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "[SCANNER_ERROR] %v\n", err)
 	}
 }

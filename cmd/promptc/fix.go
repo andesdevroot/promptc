@@ -28,35 +28,14 @@ var fixCmd = &cobra.Command{
 		ctx := context.Background()
 		promptcSDK, _ := sdk.NewSDK(ctx, cfg.APIKey, "")
 
-		analysis := promptcSDK.Analyze(p)
+		analysis := promptcSDK.Engine.Analyze(p)
 		
-		analysisResult, ok := analysis.(map[string]interface{})
-		if !ok {
-			fmt.Println("Error: invalid analysis result type")
-			os.Exit(1)
-		}
+		score := analysis.Score
+		fmt.Printf("Score: %d/100\n", score)
 
-		score, ok := analysisResult["Score"].(float64)
-		if !ok {
-			fmt.Println("Error: Score field not found or invalid type")
-			os.Exit(1)
-		}
-		fmt.Printf("Score: %d/100\n", int(score))
-
-		analysisResult, ok = analysis.(map[string]interface{})
-		if !ok {
-			fmt.Println("Error: invalid analysis result type")
-			os.Exit(1)
-		}
-
-		isReliable, ok := analysisResult["IsReliable"].(bool)
-		if !ok {
-			fmt.Println("Error: IsReliable field not found or invalid type")
-			os.Exit(1)
-		}
-
+		isReliable := analysis.IsReliable
 		if !isReliable {
-			optimized, err := promptcSDK.Optimize(ctx, p)
+			optimized, err := promptcSDK.CompileAndOptimize(ctx, p)
 			if err != nil {
 				fmt.Printf("\n❌ Error Crítico: %v\n", err)
 				os.Exit(1)
