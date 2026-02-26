@@ -5,31 +5,24 @@ import (
 	"fmt"
 )
 
-const (
-	// MaxPromptLength define el límite de seguridad (aprox 100KB)
-	MaxPromptLength = 100000
-)
+// MaxPromptSize define el límite físico (100KB es un estándar seguro para prompts)
+const MaxPromptSize = 100 * 1024
 
-var (
-	ErrPromptTooLarge = errors.New("security: prompt content exceeds safety limits")
-)
+var ErrPromptTooLarge = errors.New("security: prompt exceeds maximum allowed size")
 
-// ResourceValidator gestiona los límites físicos del compilador.
 type ResourceValidator struct {
-	MaxLength int
+	MaxSize int
 }
 
 func NewResourceValidator() *ResourceValidator {
-	return &ResourceValidator{
-		MaxLength: MaxPromptLength,
-	}
+	return &ResourceValidator{MaxSize: MaxPromptSize}
 }
 
-// Validate comprueba si el prompt es seguro para procesar.
 func (v *ResourceValidator) Validate(content string) error {
-	if len(content) > v.MaxLength {
-		return fmt.Errorf("%w: current size %d, max allowed %d",
-			ErrPromptTooLarge, len(content), v.MaxLength)
+	// Validamos por bytes, que es lo que realmente afecta la RAM del Mac Mini
+	if len(content) > v.MaxSize {
+		return fmt.Errorf("%w: size %d bytes, limit %d bytes",
+			ErrPromptTooLarge, len(content), v.MaxSize)
 	}
 	return nil
 }
