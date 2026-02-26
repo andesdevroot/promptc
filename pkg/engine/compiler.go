@@ -19,13 +19,10 @@ func New() *CompilerEngine {
 }
 
 func (e *CompilerEngine) Compile(p core.Prompt) (string, error) {
-	// 1. Sanitización de entrada (PII Masking)
-	p.Role, _ = e.masker.Mask(p.Role)
-	p.Context, _ = e.masker.Mask(p.Context)
-	p.Task, _ = e.masker.Mask(p.Task)
-
-	for k, v := range p.Variables {
-		p.Variables[k], _ = e.masker.Mask(v)
+	// 1. Validación de Recursos (Falla rápido)
+	validator := security.NewResourceValidator()
+	if err := validator.Validate(p.Task); err != nil {
+		return "", err
 	}
 
 	// 2. Resolver Task
