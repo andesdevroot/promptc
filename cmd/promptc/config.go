@@ -21,7 +21,8 @@ var configCmd = &cobra.Command{
 		reader := bufio.NewReader(os.Stdin)
 
 		fmt.Println(cli.ColorCyan + "¿Qué proveedor de IA deseas usar?" + cli.ColorReset)
-		fmt.Println("1) Google Gemini")
+		fmt.Println("1) OpenAI")
+		fmt.Println("2) Google Gemini")
 		fmt.Print(cli.ColorYellow + "> " + cli.ColorReset)
 
 		providerOption, _ := reader.ReadString('\n')
@@ -30,9 +31,11 @@ var configCmd = &cobra.Command{
 		var provider string
 		switch providerOption {
 		case "1":
+			provider = "openai"
+		case "2":
 			provider = "gemini"
 		default:
-			provider = "gemini"
+			provider = "openai"
 		}
 
 		fmt.Printf("\n🔑 Ingresa tu API Key:\n")
@@ -41,9 +44,23 @@ var configCmd = &cobra.Command{
 		apiKey, _ := reader.ReadString('\n')
 		apiKey = strings.TrimSpace(apiKey)
 
+		openAIModel := ""
+		if provider == "openai" {
+			fmt.Printf("\n🧠 Modelo OpenAI (Enter para usar gpt-5.4-mini):\n")
+			fmt.Print(cli.ColorYellow + "> " + cli.ColorReset)
+			openAIModel, _ = reader.ReadString('\n')
+			openAIModel = strings.TrimSpace(openAIModel)
+		}
+
 		cfg := config.AppConfig{
-			Provider: provider,
-			APIKey:   apiKey,
+			Provider:    provider,
+			APIKey:      apiKey,
+			OpenAIModel: openAIModel,
+		}
+		if provider == "openai" {
+			cfg.OpenAIAPIKey = apiKey
+		} else {
+			cfg.GeminiAPIKey = apiKey
 		}
 
 		config.Save(cfg)

@@ -1,12 +1,11 @@
 #!/bin/bash
 set -e
 
-# --- UI & Branding ---
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${CYAN}"
 echo "    ____  ____  ____  __  ______  __________ "
@@ -15,31 +14,38 @@ echo "  / /_/ / /_/ / / / / /|_/ / /_/ // / / /    "
 echo " / ____/ _, _/ /_/ / /  / / ____// / / /___  "
 echo "/_/   /_/ |_|\____/_/  /_/_/    /_/  \____/  "
 echo -e "${NC}"
-echo "=> Iniciando instalación de PROMPTC v0.3.1 (Community Edition)..."
+echo "=> Iniciando instalación de PROMPTC v0.3.1 (Codex Edition)..."
 echo ""
 
-# --- 1. Verificación de Dependencias ---
-if ! command -v go &> /dev/null; then
+if ! command -v go >/dev/null 2>&1; then
     echo -e "${RED}[FATAL] Go no está instalado.${NC} Descárgalo desde https://go.dev/dl/ e inténtalo de nuevo."
     exit 1
 fi
 
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}[FATAL] Python3 no está instalado.${NC} Es necesario para configurar Claude."
+if ! command -v git >/dev/null 2>&1; then
+    echo -e "${RED}[FATAL] Git no está instalado.${NC} Es necesario para clonar PROMPTC."
     exit 1
 fi
 
-# --- 2. Preparación de Entorno ---
 PROMPTC_DIR="$HOME/.promptc"
 echo "=> Creando directorio base en $PROMPTC_DIR..."
 mkdir -p "$PROMPTC_DIR"
 
-# --- 3. Obtención de la API Key (Lectura directa del TTY) ---
-echo -n "=> Pega tu GEMINI_API_KEY (Presiona Enter si prefieres configurarla luego): "
-read -r USER_GEMINI_KEY < /dev/tty || true
-export USER_GEMINI_KEY
+echo -n "=> Pega tu OPENAI_API_KEY (Enter para omitir fallback cloud): "
+read -r USER_OPENAI_KEY < /dev/tty || true
 
-# --- 4. Descarga y Compilación ---
+echo -n "=> Modelo OpenAI [gpt-5.4-mini]: "
+read -r USER_OPENAI_MODEL < /dev/tty || true
+USER_OPENAI_MODEL="${USER_OPENAI_MODEL:-gpt-5.4-mini}"
+
+echo -n "=> Pega tu GEMINI_API_KEY (Enter para fallback secundario opcional): "
+read -r USER_GEMINI_KEY < /dev/tty || true
+
+DEFAULT_REMOTE_IP="100.90.6.101"
+echo -n "=> PROMPTC_MACMINI_IP [$DEFAULT_REMOTE_IP]: "
+read -r USER_REMOTE_IP < /dev/tty || true
+USER_REMOTE_IP="${USER_REMOTE_IP:-$DEFAULT_REMOTE_IP}"
+
 echo "=> Descargando código fuente desde GitHub (rama master)..."
 TEMP_DIR=$(mktemp -d)
 git clone -q -b master https://github.com/andesdevroot/promptc.git "$TEMP_DIR"
@@ -48,50 +54,50 @@ echo "=> Compilando binario estático optimizado..."
 cd "$TEMP_DIR"
 go build -ldflags="-s -w" -o "$PROMPTC_DIR/promptc" ./cmd/promptc/main.go
 
-# --- 5. Inyección de Configuración en Claude Desktop ---
-echo "=> Inyectando servidor MCP en Claude Desktop..."
+ENV_ARGS=(--env "PROMPTC_MCP_CLIENT=codex-desktop" --env "PROMPTC_MACMINI_IP=$USER_REMOTE_IP")
+if [ -n "$USER_OPENAI_KEY" ]; then
+    ENV_ARGS+=(--env "OPENAI_API_KEY=$USER_OPENAI_KEY" --env "OPENAI_MODEL=$USER_OPENAI_MODEL")
+fi
+if [ -n "$USER_GEMINI_KEY" ]; then
+    ENV_ARGS+=(--env "GEMINI_API_KEY=$USER_GEMINI_KEY")
+fi
 
-# Usamos comillas simples para proteger el script de Python de la expansión de Bash
-python3 -c '
-import json, os
+MANUAL_CMD="codex mcp add PROMPTC ${ENV_ARGS[*]} -- $PROMPTC_DIR/promptc"
 
-path = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
-data = {"mcpServers": {}}
+if command -v codex >/dev/null 2>&1; then
+    echo "=> Registrando PROMPTC como servidor MCP en Codex..."
+    codex mcp remove PROMPTC >/dev/null 2>&1 || true
+    codex mcp add PROMPTC "${ENV_ARGS[@]}" -- "$PROMPTC_DIR/promptc"
+    CONFIG_STATUS="Codex configurado automáticamente"
+else
+    CONFIG_STATUS="Codex no detectado; configuración manual requerida"
+fi
 
-if os.path.exists(path):
-    try:
-        with open(path, "r") as f:
-            data = json.load(f)
-    except Exception as e:
-        print(f"   [WARN] No se pudo leer config previa: {e}")
+cat > "$PROMPTC_DIR/codex-mcp-setup.sh" <<EOF
+#!/bin/bash
+$MANUAL_CMD
+EOF
+chmod +x "$PROMPTC_DIR/codex-mcp-setup.sh"
 
-if "mcpServers" not in data:
-    data["mcpServers"] = {}
-
-api_key = os.environ.get("USER_GEMINI_KEY", "")
-env_vars = {}
-if api_key:
-    env_vars["GEMINI_API_KEY"] = api_key
-
-data["mcpServers"]["PROMPTC"] = {
-    "command": os.path.expanduser("~/.promptc/promptc"),
-    "args": ["-mode=community"],
-    "env": env_vars
-}
-
-os.makedirs(os.path.dirname(path), exist_ok=True)
-
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-'
-
-# --- 6. Limpieza y Cierre ---
 rm -rf "$TEMP_DIR"
 
 echo ""
-echo -e "${GREEN}[SUCCESS] ¡PROMPTC Community Edition instalado exitosamente!${NC}"
+echo -e "${GREEN}[SUCCESS] ¡PROMPTC Codex Edition instalado exitosamente!${NC}"
 echo "--------------------------------------------------------"
 echo " • Binario instalado en: $PROMPTC_DIR/promptc"
-echo " • Claude configurado (Modo: Community)"
+echo " • Estado MCP: $CONFIG_STATUS"
+if [ -n "$USER_OPENAI_KEY" ]; then
+    echo " • Cloud primario: OpenAI ($USER_OPENAI_MODEL)"
+fi
+if [ -n "$USER_GEMINI_KEY" ]; then
+    echo " • Cloud secundario: Gemini fallback"
+fi
+echo " • Script de apoyo: $PROMPTC_DIR/codex-mcp-setup.sh"
 echo "--------------------------------------------------------"
-echo -e "${YELLOW}>> PASO FINAL:${NC} Reinicia Claude Desktop (Cmd + Q) para aplicar los cambios."
+
+if ! command -v codex >/dev/null 2>&1; then
+    echo -e "${YELLOW}>> PASO FINAL:${NC} Instala Codex y luego ejecuta:"
+    echo "   $MANUAL_CMD"
+else
+    echo -e "${YELLOW}>> PASO FINAL:${NC} Reinicia Codex para que tome el nuevo servidor MCP."
+fi
