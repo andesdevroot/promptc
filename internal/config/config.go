@@ -9,8 +9,11 @@ import (
 
 // AppConfig representa la estructura del archivo ~/.promptc/config.yaml
 type AppConfig struct {
-	Provider string `yaml:"provider"`
-	APIKey   string `yaml:"api_key"`
+	Provider     string `yaml:"provider"`
+	APIKey       string `yaml:"api_key"`
+	OpenAIAPIKey string `yaml:"openai_api_key,omitempty"`
+	OpenAIModel  string `yaml:"openai_model,omitempty"`
+	GeminiAPIKey string `yaml:"gemini_api_key,omitempty"`
 }
 
 // getConfigPath resuelve la ruta absoluta al archivo de configuración del usuario
