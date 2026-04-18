@@ -44,6 +44,8 @@ type Template struct {
 	Content     string `json:"content"`
 }
 
+const appVersion = "0.3.1"
+
 // --- SISTEMA DE AUDITORÍA ---
 // AuditEvent representa un evento estructurado de auditoría.
 // Cada evento tiene tipo semántico, actor, recurso y resultado.
@@ -51,7 +53,7 @@ type AuditEvent struct {
 	Timestamp string `json:"ts"`
 	Type      string `json:"type"` // KERNEL | MCP | TEMPLATE | INFERENCE | POLICY | SYSTEM
 	Action    string `json:"action"`
-	Actor     string `json:"actor"` // claude-desktop | promptc-engine | mac-mini | gemini
+	Actor     string `json:"actor"` // codex-desktop | promptc-engine | mac-mini | gemini
 	Resource  string `json:"resource,omitempty"`
 	Result    string `json:"result"` // OK | FAIL | WARN
 	LatencyMs int64  `json:"latency_ms,omitempty"`
@@ -89,7 +91,7 @@ func auditLog(evt AuditEvent) {
 	}
 	hub.Unlock()
 
-	// 2. A stderr (visible en mcp.log de Claude Desktop)
+	// 2. A stderr (visible en el cliente MCP, por ejemplo Codex Desktop)
 	fmt.Fprintf(os.Stderr, "%s\n", line)
 
 	// 3. Al archivo de auditoría append-only (registro regulatorio)
@@ -566,7 +568,7 @@ const dashboardHTML = `<!DOCTYPE html>
 </head>
 <body>
     <div class="header">
-        <h1>PROMPTC // CONTROL_PANEL_V0.3.0 <span class="blink">_</span></h1>
+        <h1>PROMPTC // CONTROL_PANEL_V0.3.1 <span class="blink">_</span></h1>
         <span id="clock" style="font-size:0.8em; color:#00aa2a;"></span>
     </div>
 
@@ -808,7 +810,7 @@ func startDashboard() {
 		metrics.Unlock()
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":          "ok",
-			"version":         "0.3.0",
+			"version":         appVersion,
 			"node_online":     nodeOnline,
 			"last_heartbeat":  lastHeartbeat,
 			"templates_count": tmplCount,
@@ -850,7 +852,7 @@ func startDashboard() {
 var startTime = time.Now()
 
 // --- TOOL HANDLERS ---
-func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
+func handleToolCall(req JSONRPCMessage, app *sdk.PromptC, mcpClient string) {
 	var call struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
@@ -859,7 +861,7 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 		auditLog(AuditEvent{
 			Type:   "MCP",
 			Action: "TOOL_PARSE_ERROR",
-			Actor:  "claude-desktop",
+			Actor:  mcpClient,
 			Result: "FAIL",
 			Detail: err.Error(),
 		})
@@ -871,11 +873,11 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 		return
 	}
 
-	// Evento MCP: Claude Desktop invocó una herramienta
+	// Evento MCP: el cliente activo invocó una herramienta
 	auditLog(AuditEvent{
 		Type:     "MCP",
 		Action:   "TOOL_INVOKED",
-		Actor:    "claude-desktop",
+		Actor:    mcpClient,
 		Resource: call.Name,
 		Result:   "OK",
 		Detail:   "Solicitud recibida vía MCP stdio",
@@ -1072,7 +1074,7 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC) {
 		auditLog(AuditEvent{
 			Type:     "MCP",
 			Action:   "TOOL_NOT_FOUND",
-			Actor:    "claude-desktop",
+			Actor:    mcpClient,
 			Resource: call.Name,
 			Result:   "FAIL",
 			Detail:   "Herramienta no registrada en el servidor MCP",
@@ -1115,6 +1117,12 @@ func main() {
 	// 5. Persistencia periódica
 	startMetricsPersistence()
 
+	// 6. Cliente MCP
+	mcpClient := os.Getenv("PROMPTC_MCP_CLIENT")
+	if mcpClient == "" {
+		mcpClient = "codex-desktop"
+	}
+
 	// 6. SDK
 	app, err := sdk.NewSDK(context.Background(), os.Getenv("GEMINI_API_KEY"), remoteIP)
 	if err != nil {
@@ -1143,7 +1151,9 @@ func main() {
 		Action: "BOOT",
 		Actor:  "promptc-engine",
 		Result: "OK",
-		Detail: fmt.Sprintf("PROMPTC v0.3.0 iniciado — nodo=%s templates=%d inferencias_previas=%d",
+		Detail: fmt.Sprintf("PROMPTC v%s iniciado — cliente=%s nodo=%s templates=%d inferencias_previas=%d",
+			appVersion,
+			mcpClient,
 			remoteIP,
 			len(hub.Templates),
 			atomic.LoadInt64(&metrics.InferenceCount),
@@ -1166,13 +1176,13 @@ func main() {
 			auditLog(AuditEvent{
 				Type:   "MCP",
 				Action: "HANDSHAKE_INIT",
-				Actor:  "claude-desktop",
+				Actor:  mcpClient,
 				Result: "OK",
 				Detail: "Protocolo MCP 2024-11-05 — negociación iniciada",
 			})
 			sendResponse(req.ID, map[string]interface{}{
 				"protocolVersion": "2024-11-05",
-				"serverInfo":      map[string]string{"name": "PROMPTC", "version": "0.3.0"},
+				"serverInfo":      map[string]string{"name": "PROMPTC", "version": appVersion},
 				"capabilities":    map[string]interface{}{"tools": map[string]interface{}{}},
 			})
 
@@ -1180,7 +1190,7 @@ func main() {
 			auditLog(AuditEvent{
 				Type:   "MCP",
 				Action: "HANDSHAKE_CONFIRMED",
-				Actor:  "claude-desktop",
+				Actor:  mcpClient,
 				Result: "OK",
 				Detail: "Canal MCP establecido — herramientas disponibles",
 			})
@@ -1189,7 +1199,7 @@ func main() {
 			auditLog(AuditEvent{
 				Type:   "MCP",
 				Action: "TOOLS_LIST_REQUESTED",
-				Actor:  "claude-desktop",
+				Actor:  mcpClient,
 				Result: "OK",
 				Detail: "Enviando schema de 2 herramientas: get_template, optimize_prompt",
 			})
@@ -1251,7 +1261,7 @@ func main() {
 			})
 
 		case "tools/call":
-			handleToolCall(req, app)
+			handleToolCall(req, app, mcpClient)
 		}
 	}
 
