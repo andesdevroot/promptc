@@ -31,7 +31,14 @@ PROMPTC_DIR="$HOME/.promptc"
 echo "=> Creando directorio base en $PROMPTC_DIR..."
 mkdir -p "$PROMPTC_DIR"
 
-echo -n "=> Pega tu GEMINI_API_KEY (Enter para omitir fallback cloud): "
+echo -n "=> Pega tu OPENAI_API_KEY (Enter para omitir fallback cloud): "
+read -r USER_OPENAI_KEY < /dev/tty || true
+
+echo -n "=> Modelo OpenAI [gpt-5.4-mini]: "
+read -r USER_OPENAI_MODEL < /dev/tty || true
+USER_OPENAI_MODEL="${USER_OPENAI_MODEL:-gpt-5.4-mini}"
+
+echo -n "=> Pega tu GEMINI_API_KEY (Enter para fallback secundario opcional): "
 read -r USER_GEMINI_KEY < /dev/tty || true
 
 DEFAULT_REMOTE_IP="100.90.6.101"
@@ -48,6 +55,9 @@ cd "$TEMP_DIR"
 go build -ldflags="-s -w" -o "$PROMPTC_DIR/promptc" ./cmd/promptc/main.go
 
 ENV_ARGS=(--env "PROMPTC_MCP_CLIENT=codex-desktop" --env "PROMPTC_MACMINI_IP=$USER_REMOTE_IP")
+if [ -n "$USER_OPENAI_KEY" ]; then
+    ENV_ARGS+=(--env "OPENAI_API_KEY=$USER_OPENAI_KEY" --env "OPENAI_MODEL=$USER_OPENAI_MODEL")
+fi
 if [ -n "$USER_GEMINI_KEY" ]; then
     ENV_ARGS+=(--env "GEMINI_API_KEY=$USER_GEMINI_KEY")
 fi
@@ -76,6 +86,12 @@ echo -e "${GREEN}[SUCCESS] ¡PROMPTC Codex Edition instalado exitosamente!${NC}"
 echo "--------------------------------------------------------"
 echo " • Binario instalado en: $PROMPTC_DIR/promptc"
 echo " • Estado MCP: $CONFIG_STATUS"
+if [ -n "$USER_OPENAI_KEY" ]; then
+    echo " • Cloud primario: OpenAI ($USER_OPENAI_MODEL)"
+fi
+if [ -n "$USER_GEMINI_KEY" ]; then
+    echo " • Cloud secundario: Gemini fallback"
+fi
 echo " • Script de apoyo: $PROMPTC_DIR/codex-mcp-setup.sh"
 echo "--------------------------------------------------------"
 
