@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/andesdevroot/promptc/internal/cli"
 	"github.com/andesdevroot/promptc/internal/config"
@@ -31,7 +32,33 @@ var fixCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		promptcSDK, err := sdk.NewSDK(ctx, cfg.APIKey, os.Getenv("PROMPTC_MACMINI_IP"))
+		openAIKey := strings.TrimSpace(cfg.OpenAIAPIKey)
+		geminiKey := strings.TrimSpace(cfg.GeminiAPIKey)
+
+		switch cfg.Provider {
+		case "openai":
+			if openAIKey == "" {
+				openAIKey = strings.TrimSpace(cfg.APIKey)
+			}
+		case "gemini":
+			if geminiKey == "" {
+				geminiKey = strings.TrimSpace(cfg.APIKey)
+			}
+		}
+
+		if envKey := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); envKey != "" {
+			openAIKey = envKey
+		}
+		if envKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY")); envKey != "" {
+			geminiKey = envKey
+		}
+
+		openAIModel := strings.TrimSpace(cfg.OpenAIModel)
+		if envModel := strings.TrimSpace(os.Getenv("OPENAI_MODEL")); envModel != "" {
+			openAIModel = envModel
+		}
+
+		promptcSDK, err := sdk.NewSDK(ctx, openAIKey, openAIModel, geminiKey, os.Getenv("PROMPTC_MACMINI_IP"))
 		if err != nil {
 			fmt.Println("Error inicializando SDK:", err)
 			os.Exit(1)
