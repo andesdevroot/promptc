@@ -29,11 +29,11 @@
 
 ## ⚡ Quick Start (Community Edition)
 
-Get PROMPTC running in your local environment in under 60 seconds. Our *Plug & Play* installer automatically configures the engine and connects it with **Claude Desktop**.
+Get PROMPTC running in your local environment in under 60 seconds. Our *Plug & Play* installer compiles the engine and registers it as a local MCP server for **Codex**.
 
 **Prerequisites:**
 * macOS (M1/M2/M3) or Linux.
-* Claude Desktop installed.
+* Codex CLI or Codex app installed.
 * A [Google AI Studio API Key](https://aistudio.google.com/app/apikey).
 
 Run in your terminal:
@@ -41,6 +41,13 @@ Run in your terminal:
 ```bash
 curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/master/install.sh | bash
 ```
+
+The installer now:
+* compiles `promptc` into `~/.promptc/promptc`
+* registers `PROMPTC` in Codex through `codex mcp add`
+* injects `PROMPTC_MACMINI_IP`, `PROMPTC_MCP_CLIENT=codex-desktop`, and optional `GEMINI_API_KEY`
+
+If Codex is not available yet, the installer leaves a ready-to-run helper script at `~/.promptc/codex-mcp-setup.sh`.
 
 ---
 
@@ -50,7 +57,8 @@ In regulated sectors like **Mining, Banking, and Legal**, business logic is a cr
 
 ### 1. Community Mode (Agile Development)
 * **Orchestration:** Ultra-lightweight local binary execution.
-* **Inference:** Routes optimization to **Gemini 1.5 Pro** transparently.
+* **Client:** Designed for **Codex** as the MCP-native operator surface.
+* **Inference:** Routes optimization to **Gemini** transparently when local sovereignty is unavailable.
 
 ### 2. Enterprise Mode (Air-Gapped / Full Sovereignty)
 * **Orchestration:** Local interceptor for all outgoing prompts.
@@ -73,6 +81,7 @@ In regulated sectors like **Mining, Banking, and Legal**, business logic is a cr
 * **Static Go Binary**: Zero dependencies, runtime-free, and high performance (RAM < 15MB).
 * **Prompt-as-Code (PaC)**: Manage templates through versioned, pre-certified components.
 * **Deterministic Compilation**: Transforms ambiguous language into structured Markdown (Role, Context, Task, Constraints).
+* **Codex-Ready Local Ops**: Works as a stdio MCP server that Codex can register and call locally.
 
 ---
 
