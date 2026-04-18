@@ -47,14 +47,20 @@ func (s *PromptC) Analyze(p core.Prompt) core.Result {
 	return s.Engine.Analyze(p)
 }
 
-// NewSDK ahora acepta 3 argumentos para incluir tu nodo de Tailscale
-func NewSDK(ctx context.Context, geminiKey string, remoteIP string) (*PromptC, error) {
+// NewSDK inicializa la cadena de optimizadores:
+// nodo local -> OpenAI -> Gemini.
+func NewSDK(ctx context.Context, openAIKey string, openAIModel string, geminiKey string, remoteIP string) (*PromptC, error) {
 	eng := engine.New()
 	var optimizers []core.Optimizer
 
 	// Prioridad: Nodo local Mac mini (Soberanía de datos)
 	if remoteIP != "" {
 		optimizers = append(optimizers, provider.NewOllamaProvider(remoteIP))
+	}
+
+	// Respaldo cloud primario: OpenAI
+	if openAIKey != "" {
+		optimizers = append(optimizers, provider.NewOpenAIProvider(openAIKey, openAIModel))
 	}
 
 	// Respaldo: Gemini Cloud
