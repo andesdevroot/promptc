@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/andesdevroot/promptc/pkg/core"
@@ -14,12 +15,36 @@ type PromptC struct {
 	Optimizers []core.Optimizer
 }
 
-func (s *PromptC) Optimize(ctx context.Context, p core.Prompt) (any, any) {
-	panic("unimplemented")
+func (s *PromptC) Optimize(ctx context.Context, p core.Prompt) (string, error) {
+	if s == nil || s.Engine == nil {
+		return "", fmt.Errorf("sdk no inicializado")
+	}
+
+	analysis := s.Engine.Analyze(p)
+
+	for _, opt := range s.Optimizers {
+		log.Printf("[SDK] Intentando con: %s", opt.Name())
+		optimized, err := opt.Optimize(ctx, p, analysis.Issues)
+		if err == nil {
+			return optimized, nil
+		}
+		log.Printf("[SDK] Error con %s: %v", opt.Name(), err)
+	}
+
+	return s.Engine.Compile(p)
 }
 
-func (s *PromptC) Analyze(p core.Prompt) any {
-	panic("unimplemented")
+func (s *PromptC) Analyze(p core.Prompt) core.Result {
+	if s == nil || s.Engine == nil {
+		return core.Result{
+			Score:       0,
+			IsReliable:  false,
+			Issues:      []string{"sdk no inicializado"},
+			Suggestions: []string{"Inicializa PROMPTC antes de ejecutar Analyze."},
+		}
+	}
+
+	return s.Engine.Analyze(p)
 }
 
 // NewSDK ahora acepta 3 argumentos para incluir tu nodo de Tailscale
@@ -48,6 +73,10 @@ func NewSDK(ctx context.Context, geminiKey string, remoteIP string) (*PromptC, e
 
 // CompileAndOptimize es el método que main.go intentaba llamar
 func (s *PromptC) CompileAndOptimize(ctx context.Context, p core.Prompt) (string, error) {
+	if s == nil || s.Engine == nil {
+		return "", fmt.Errorf("sdk no inicializado")
+	}
+
 	analysis := s.Engine.Analyze(p)
 
 	// Si el prompt es perfecto, no gastamos ciclos de GPU
