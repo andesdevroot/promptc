@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -230,7 +231,7 @@ func startMetricsPersistence() {
 	}()
 }
 
-func recordInference(success bool, latencyMs int64, tokens int64, usedGemini bool) {
+func recordInference(success bool, latencyMs int64, tokens int64, usedCloudFallback bool) {
 	atomic.AddInt64(&metrics.InferenceCount, 1)
 	atomic.AddInt64(&metrics.TotalLatencyMs, latencyMs)
 	atomic.AddInt64(&metrics.TotalTokens, tokens)
@@ -239,7 +240,7 @@ func recordInference(success bool, latencyMs int64, tokens int64, usedGemini boo
 	} else {
 		atomic.AddInt64(&metrics.InferenceFail, 1)
 	}
-	if usedGemini {
+	if usedCloudFallback {
 		atomic.AddInt64(&metrics.GeminiCallCount, 1)
 	}
 	if atomic.LoadInt64(&metrics.InferenceCount)%10 == 0 {
@@ -356,7 +357,7 @@ func startHeartbeat(remoteIP string) {
 						Actor:    "mac-mini",
 						Resource: remoteIP + ":11434",
 						Result:   "WARN",
-						Detail:   "Nodo no responde — activando fallback Gemini",
+						Detail:   "Nodo no responde — activando fallback cloud",
 					})
 				}
 			}
@@ -599,7 +600,7 @@ const dashboardHTML = `<!DOCTYPE html>
             <span class="metric-sub" id="m-succfail">ok:0 / err:0</span>
         </div>
         <div class="metric-card">
-            <span class="metric-label">Gemini Quota</span>
+            <span class="metric-label">Cloud Fallback</span>
             <span class="metric-value" id="m-gemini">0</span>
             <span class="metric-sub">calls hoy</span>
         </div>
@@ -1003,7 +1004,12 @@ func handleToolCall(req JSONRPCMessage, app *sdk.PromptC, mcpClient string) {
 		metrics.Unlock()
 		inferenceActor := "mac-mini"
 		if !nodeOnline {
-			inferenceActor = "gemini-cloud"
+			inferenceActor = "cloud-fallback"
+			if strings.TrimSpace(os.Getenv("OPENAI_API_KEY")) != "" {
+				inferenceActor = "openai-cloud"
+			} else if strings.TrimSpace(os.Getenv("GEMINI_API_KEY")) != "" {
+				inferenceActor = "gemini-cloud"
+			}
 		}
 
 		auditLog(AuditEvent{
@@ -1123,8 +1129,12 @@ func main() {
 		mcpClient = "codex-desktop"
 	}
 
+	openAIKey := strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
+	openAIModel := strings.TrimSpace(os.Getenv("OPENAI_MODEL"))
+	geminiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
+
 	// 6. SDK
-	app, err := sdk.NewSDK(context.Background(), os.Getenv("GEMINI_API_KEY"), remoteIP)
+	app, err := sdk.NewSDK(context.Background(), openAIKey, openAIModel, geminiKey, remoteIP)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[SDK_ERROR] %v — continuando sin optimizadores\n", err)
 	}
@@ -1221,7 +1231,7 @@ func main() {
 					},
 					{
 						"name":        "optimize_prompt",
-						"description": "Compila y optimiza un prompt usando el Mac Mini vía Tailscale con fallback a Gemini. Acepta template_name para usar una plantilla como base con resolución automática de variables.",
+						"description": "Compila y optimiza un prompt usando el Mac Mini vía Tailscale con fallback a OpenAI y Gemini. Acepta template_name para usar una plantilla como base con resolución automática de variables.",
 						"inputSchema": map[string]interface{}{
 							"type":     "object",
 							"required": []string{"role", "context", "task"},
