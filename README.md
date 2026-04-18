@@ -34,7 +34,8 @@ Get PROMPTC running in your local environment in under 60 seconds. Our *Plug & P
 **Prerequisites:**
 * macOS (M1/M2/M3) or Linux.
 * Codex CLI or Codex app installed.
-* A [Google AI Studio API Key](https://aistudio.google.com/app/apikey).
+* An [OpenAI API key](https://platform.openai.com/api-keys) for cloud fallback.
+* Optional: a [Google AI Studio API Key](https://aistudio.google.com/app/apikey) as secondary fallback.
 
 Run in your terminal:
 
@@ -45,7 +46,7 @@ curl -sSL https://raw.githubusercontent.com/andesdevroot/promptc/master/install.
 The installer now:
 * compiles `promptc` into `~/.promptc/promptc`
 * registers `PROMPTC` in Codex through `codex mcp add`
-* injects `PROMPTC_MACMINI_IP`, `PROMPTC_MCP_CLIENT=codex-desktop`, and optional `GEMINI_API_KEY`
+* injects `PROMPTC_MACMINI_IP`, `PROMPTC_MCP_CLIENT=codex-desktop`, `OPENAI_API_KEY`, optional `OPENAI_MODEL`, and optional `GEMINI_API_KEY`
 
 If Codex is not available yet, the installer leaves a ready-to-run helper script at `~/.promptc/codex-mcp-setup.sh`.
 
@@ -58,7 +59,7 @@ In regulated sectors like **Mining, Banking, and Legal**, business logic is a cr
 ### 1. Community Mode (Agile Development)
 * **Orchestration:** Ultra-lightweight local binary execution.
 * **Client:** Designed for **Codex** as the MCP-native operator surface.
-* **Inference:** Routes optimization to **Gemini** transparently when local sovereignty is unavailable.
+* **Inference:** Routes optimization to **OpenAI** transparently when local sovereignty is unavailable, with optional **Gemini** secondary fallback.
 
 ### 2. Enterprise Mode (Air-Gapped / Full Sovereignty)
 * **Orchestration:** Local interceptor for all outgoing prompts.
@@ -82,6 +83,7 @@ In regulated sectors like **Mining, Banking, and Legal**, business logic is a cr
 * **Prompt-as-Code (PaC)**: Manage templates through versioned, pre-certified components.
 * **Deterministic Compilation**: Transforms ambiguous language into structured Markdown (Role, Context, Task, Constraints).
 * **Codex-Ready Local Ops**: Works as a stdio MCP server that Codex can register and call locally.
+* **OpenAI Responses API Fallback**: Uses the official `/v1/responses` API for cloud optimization when the local node is unavailable.
 
 ---
 
